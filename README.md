@@ -23,9 +23,12 @@ something is listening, not that it is this app.
 Tests and evaluation need no host Python:
 
 ```bash
-docker compose --profile test run --rm tests    # ruff + 79 tests (unit, and the importer against a fixture)
-docker compose --profile eval run --rm evals    # the assistant, end to end, through its API
+docker compose --profile test run --rm --build tests    # ruff + 79 tests (unit, and the importer against a fixture)
+docker compose --profile eval run --rm --build evals    # the assistant, end to end, through its API
 ```
+
+`--build` costs nothing when nothing changed and guarantees the image matches the checkout;
+`docker compose run` alone would happily reuse an image built from an earlier commit.
 
 ## Try the assistant
 
@@ -226,11 +229,12 @@ gate reported every case byte-identical — the guard changed nothing for a mode
 
 ## Evaluation
 
-`docker compose --profile eval run --rm evals` runs six cases through the API and applies four
+`docker compose --profile eval run --rm --build evals` runs six cases through the API and applies four
 gates: **expectations** (decision, passes, tools, wording), **determinism** (every case twice,
 byte-identical), **coverage** (all four readiness states occur) and **regression** against a
 committed behavioural fingerprint. Exit codes 0 / 1 / 2 for pass, gate failure, infrastructure
-error.
+error. The runs it creates are real runs, stored like any other and visible on the
+opportunity pages; `./reset.sh` clears them.
 
 Cases are selected by query, never by code — "an open enquiry with a budget but no area and no
 height" — so they survive the archive being replaced. Against the supplied archive the queries

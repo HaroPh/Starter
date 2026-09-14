@@ -85,7 +85,7 @@ services:
       CRM_BASE_URL: http://app:3000
       DATABASE_URL: postgresql://crm:local-development-only@db:5432/crm
     # An entrypoint rather than a command, so options pass straight through:
-    #   docker compose --profile eval run --rm evals --save-baseline
+    #   docker compose --profile eval run --rm --build evals --save-baseline
     entrypoint: ["python", "evals/run_eval.py"]
     volumes:
       # Baselines are written back to the repository when --save-baseline is used.
