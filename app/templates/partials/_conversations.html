@@ -1,0 +1,23 @@
+{# The conversation panel: the logging form above the timeline. Re-rendered whole after a
+   successful log, so the new entry appears at the top and the form resets. #}
+{% set ref = opp.legacy_code or opp.id %}
+<section class="panel" id="conversations">
+  <h2>Conversations <span class="muted small">this opportunity only</span></h2>
+
+  {% if logged %}<p class="flash" role="status">Recorded.</p>{% endif %}
+
+  <details class="log-toggle" {% if errors or logged %}open{% endif %}>
+    <summary class="btn btn-small">Record a conversation</summary>
+    {% include "partials/_log_activity_form.html" %}
+  </details>
+
+  {% if timeline.items %}
+    <ul class="timeline" id="timeline">
+      {% with page=timeline, more_url="/opportunities/" ~ ref ~ "/timeline" %}
+        {% include "partials/_activity_rows.html" %}
+      {% endwith %}
+    </ul>
+  {% else %}
+    <p class="empty">Nothing recorded against this opportunity yet.</p>
+  {% endif %}
+</section>

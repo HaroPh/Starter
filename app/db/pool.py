@@ -43,9 +43,15 @@ def open_pool(dsn: str, *, min_size: int = 2, max_size: int = 10) -> ConnectionP
         open=False,
         kwargs={
             "row_factory": dict_row,
-            # A query that somehow escapes its index should fail visibly rather than wedge
-            # the application in front of a reviewer.
-            "options": "-c statement_timeout=5000",
+            # statement_timeout: a query that somehow escapes its index should fail visibly
+            # rather than wedge the application in front of a reviewer.
+            #
+            # timezone: the database container runs in UTC, so without this `current_date`
+            # would be yesterday for half an hour after midnight in Rome, and a follow-up
+            # due "today" would show as due tomorrow. The sales team and every fair are in
+            # Italy, and the archive's own timestamps are Europe/Rome, so that is the zone
+            # "today" is measured in.
+            "options": "-c statement_timeout=5000 -c timezone=Europe/Rome",
         },
     )
     _pool.open(wait=True, timeout=30)

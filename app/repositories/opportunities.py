@@ -36,7 +36,7 @@ def get(conn: Connection, ref: str) -> dict[str, Any] | None:
         cur.execute(
             "SELECT o.*, "
             "       c.legacy_code AS company_code, c.name AS company_name,"
-            "       c.province_code, c.region,"
+            "       c.province_code, c.region, c.sales_rep_id,"
             "       r.display_name AS rep_name,"
             "       ct.legacy_code AS contact_code, ct.first_name AS contact_first_name,"
             "       ct.last_name AS contact_last_name, ct.email AS contact_email,"

@@ -1,0 +1,163 @@
+{# The enquiry facts: read view, or the edit form when edit_mode is set. Both render into
+   the same #facts container so "Edit" and "Cancel" are a single swap each way. #}
+{% set ref = opp.legacy_code or opp.id %}
+{% set findings = (opp.readiness_findings or {}).get('findings', []) %}
+
+<section class="panel" id="facts">
+{% if not edit_mode %}
+
+  <div class="panel-head">
+    <h2>The enquiry</h2>
+    <a class="btn btn-small" href="/opportunities/{{ ref }}?edit=1"
+       hx-get="/opportunities/{{ ref }}/edit" hx-target="#facts" hx-swap="outerHTML">Edit</a>
+  </div>
+
+  {% if saved %}<p class="flash" role="status">Saved. Handoff readiness is now <strong>{{ opp.readiness|readiness_label }}</strong>.</p>{% endif %}
+
+  <dl class="facts">
+    <div>
+      <dt>Recorded value</dt>
+      <dd>{{ opp.amount_eur|eur }}</dd>
+      <dd class="fact-note">Sales team figure, excl. VAT &mdash; not a price or a budget</dd>
+    </div>
+    <div>
+      <dt>Client budget</dt>
+      <dd>{{ opp.client_budget_eur|eur }}</dd>
+      <dd class="fact-note">{% if opp.client_budget_eur is none %}Not stated yet{% else %}What the customer said, excl. VAT{% endif %}</dd>
+    </div>
+    <div>
+      <dt>Stand area</dt>
+      <dd>{{ opp.stand_area_sqm|sqm }}</dd>
+      <dd class="fact-note">{% if opp.stand_area_sqm is none %}Plot not confirmed{% else %}Allocated plot{% endif %}</dd>
+    </div>
+    <div>
+      <dt>Requested height</dt>
+      <dd>
+        {{ opp.requested_height_m|metres }}
+        {% if opp.requested_height_m is not none and opp.max_stand_height_m is not none %}
+          {% if opp.requested_height_m > opp.max_stand_height_m %}
+            <span class="pill pill-danger">over the {{ opp.max_stand_height_m|metres }} limit</span>
+          {% elif opp.requested_height_m == opp.max_stand_height_m %}
+            <span class="pill">at the limit</span>
+          {% endif %}
+        {% endif %}
+      </dd>
+      <dd class="fact-note">A request, not an approval</dd>
+    </div>
+    <div>
+      <dt>Opened</dt>
+      <dd>{{ opp.opened_on|dmy }}</dd>
+    </div>
+    <div>
+      <dt>Decision expected</dt>
+      <dd>{{ opp.expected_close_on|dmy }}</dd>
+    </div>
+  </dl>
+
+  {% if findings %}
+  <div class="findings">
+    <h3>Before this goes to the technical team</h3>
+    <ul>
+      {% for f in findings %}
+      <li class="finding finding-{{ f.severity }}">{{ f.message }}</li>
+      {% endfor %}
+    </ul>
+  </div>
+  {% elif opp.readiness == 'ready' %}
+  <p class="findings-ok">Everything the technical team needs is known, and the height is within the edition limit.</p>
+  {% endif %}
+
+  {% if opp.brief_notes %}
+  <div class="brief">
+    <h3>Brief notes</h3>
+    <p>{{ opp.brief_notes }}</p>
+  </div>
+  {% endif %}
+
+{% else %}
+
+  <form class="edit-form" method="post" action="/opportunities/{{ ref }}"
+        hx-post="/opportunities/{{ ref }}" hx-target="#facts" hx-swap="outerHTML">
+    <div class="panel-head">
+      <h2>Edit the enquiry</h2>
+    </div>
+
+    {% if errors %}<p class="form-error-summary" role="alert">Some fields need attention &mdash; see below.</p>{% endif %}
+
+    {% macro field(name, label, value, hint='', type='text', inputmode='') -%}
+      <div class="field{% if errors.get(name) %} has-error{% endif %}">
+        <label for="f-{{ name }}">{{ label }}</label>
+        <input id="f-{{ name }}" name="{{ name }}" type="{{ type }}" value="{{ value }}"
+               {% if inputmode %}inputmode="{{ inputmode }}"{% endif %} autocomplete="off">
+        {% if errors.get(name) %}<span class="field-error">{{ errors.get(name) }}</span>
+        {% elif hint %}<span class="field-hint">{{ hint }}</span>{% endif %}
+      </div>
+    {%- endmacro %}
+
+    {% macro val(name, current) -%}{{ form.get(name, current) if form else current }}{%- endmacro %}
+
+    <div class="field-grid">
+      <div class="field field-wide{% if errors.get('description') %} has-error{% endif %}">
+        <label for="f-description">Description</label>
+        <input id="f-description" name="description" value="{{ val('description', opp.description or '') }}">
+        {% if errors.get('description') %}<span class="field-error">{{ errors.get('description') }}</span>{% endif %}
+      </div>
+
+      <div class="field{% if errors.get('status') %} has-error{% endif %}">
+        <label for="f-status">Status</label>
+        <select id="f-status" name="status">
+          {% for s in options.statuses %}
+          <option value="{{ s.code }}" {% if val('status', opp.status) == s.code %}selected{% endif %}>{{ s.label }}</option>
+          {% endfor %}
+        </select>
+        {% if errors.get('status') %}<span class="field-error">{{ errors.get('status') }}</span>{% endif %}
+      </div>
+
+      <div class="field{% if errors.get('fair_edition_id') %} has-error{% endif %}">
+        <label for="f-fair_edition_id">Fair edition</label>
+        <select id="f-fair_edition_id" name="fair_edition_id">
+          <option value="">None recorded</option>
+          {% for e in options.editions %}
+          <option value="{{ e.id }}" {% if (val('fair_edition_id', opp.fair_edition_id)|string) == (e.id|string) %}selected{% endif %}>
+            {{ e.fair_name }} {{ e.edition_label }} &middot; limit {{ e.max_stand_height_m|metres }}
+          </option>
+          {% endfor %}
+        </select>
+        {% if errors.get('fair_edition_id') %}<span class="field-error">{{ errors.get('fair_edition_id') }}</span>{% endif %}
+      </div>
+
+      {{ field('amount_eur', 'Recorded value (EUR)', val('amount_eur', opp.amount_eur|eur(symbol=False) if opp.amount_eur is not none else ''), 'Sales team figure, not a budget', inputmode='decimal') }}
+      {{ field('client_budget_eur', 'Client budget (EUR)', val('client_budget_eur', opp.client_budget_eur|eur(symbol=False) if opp.client_budget_eur is not none else ''), 'Leave empty if not stated', inputmode='decimal') }}
+      {{ field('stand_area_sqm', 'Stand area (m²)', val('stand_area_sqm', opp.stand_area_sqm|num if opp.stand_area_sqm is not none else ''), 'Leave empty until the plot is confirmed', inputmode='decimal') }}
+      {{ field('requested_height_m', 'Requested height (m)', val('requested_height_m', opp.requested_height_m|num if opp.requested_height_m is not none else ''), 'What the customer asked for', inputmode='decimal') }}
+      {{ field('expected_close_on', 'Decision expected', val('expected_close_on', opp.expected_close_on.isoformat() if opp.expected_close_on else ''), '', type='date') }}
+
+      <div class="field{% if errors.get('contact_id') %} has-error{% endif %}">
+        <label for="f-contact_id">Primary contact</label>
+        <select id="f-contact_id" name="contact_id">
+          <option value="">None</option>
+          {% for c in options.contacts %}
+          <option value="{{ c.id }}" {% if (val('contact_id', opp.contact_id)|string) == (c.id|string) %}selected{% endif %}>{{ c.first_name }} {{ c.last_name }}</option>
+          {% endfor %}
+        </select>
+        {% if errors.get('contact_id') %}<span class="field-error">{{ errors.get('contact_id') }}</span>{% endif %}
+      </div>
+
+      <div class="field field-wide{% if errors.get('brief_notes') %} has-error{% endif %}">
+        <label for="f-brief_notes">Brief notes</label>
+        <textarea id="f-brief_notes" name="brief_notes" rows="3">{{ val('brief_notes', opp.brief_notes or '') }}</textarea>
+        {% if errors.get('brief_notes') %}<span class="field-error">{{ errors.get('brief_notes') }}</span>{% endif %}
+      </div>
+    </div>
+
+    <p class="field-hint">Empty means not known yet. Clearing the area or height moves the enquiry back to provisional.</p>
+
+    <div class="form-actions">
+      <button type="submit" class="btn btn-primary">Save changes</button>
+      <a class="btn" href="/opportunities/{{ ref }}"
+         hx-get="/opportunities/{{ ref }}/facts" hx-target="#facts" hx-swap="outerHTML">Cancel</a>
+    </div>
+  </form>
+
+{% endif %}
+</section>

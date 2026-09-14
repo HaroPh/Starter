@@ -1,0 +1,10 @@
+{# What replaces a follow-up after "Done". It stays in place, visibly finished, rather than
+   vanishing -- a row disappearing from under the cursor reads as a glitch, and it is easy to
+   click Done on the wrong line. #}
+<li class="queue-item is-done" id="fu-{{ f.id }}">
+  <div class="q-when"><span class="pill pill-ok">done</span></div>
+  <div class="q-body">
+    <p class="q-note"><s>{{ f.note or 'Follow up' }}</s></p>
+    <p class="q-meta muted">{{ f.company_name }}{% if f.opportunity_code %} &middot; {{ f.opportunity_code }}{% endif %}</p>
+  </div>
+</li>

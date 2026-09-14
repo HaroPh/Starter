@@ -1,0 +1,4 @@
+{# Response to a successful htmx save: the refreshed facts block for #facts, plus the header
+   badge swapped out-of-band. #}
+{% include "partials/_opportunity_facts.html" %}
+{% with oob=true %}{% include "partials/_readiness_badge.html" %}{% endwith %}

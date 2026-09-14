@@ -1,0 +1,10 @@
+{% for f in page.items %}
+  {% include "partials/_queue_row.html" %}
+{% endfor %}
+{% if page.has_more %}
+<li class="queue-more"
+    hx-get="/follow-ups?bucket={{ bucket }}{% if rep %}&amp;rep={{ rep }}{% endif %}{% if tasks %}&amp;tasks=1{% endif %}{% if q %}&amp;q={{ q|urlencode }}{% endif %}&amp;cursor={{ page.next_cursor }}"
+    hx-trigger="revealed" hx-swap="outerHTML">
+  <a href="/follow-ups?bucket={{ bucket }}{% if rep %}&amp;rep={{ rep }}{% endif %}{% if tasks %}&amp;tasks=1{% endif %}{% if q %}&amp;q={{ q|urlencode }}{% endif %}&amp;cursor={{ page.next_cursor }}">Load more</a>
+</li>
+{% endif %}

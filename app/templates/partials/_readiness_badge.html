@@ -1,0 +1,6 @@
+{# The readiness badge in the page header. It carries an id so a save can replace it
+   out-of-band: the facts block swaps into its own target, and this swaps in alongside. #}
+<span id="readiness-badge" class="pill pill-lg {{ opp.readiness|readiness_class }}"
+      {% if oob %}hx-swap-oob="true"{% endif %}>
+  Handoff: {{ opp.readiness|readiness_label }}
+</span>

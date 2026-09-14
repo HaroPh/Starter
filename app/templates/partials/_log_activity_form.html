@@ -1,0 +1,80 @@
+{# Record a conversation -- and, in the same submit, the promise it produced.
+   The brief's own example is a promise made DURING a call ("confirm the floor area on
+   Friday"). Logging the call and then going somewhere else to schedule the follow-up is how
+   the second step gets forgotten, so both live in one form and one transaction. #}
+{% set ref = opp.legacy_code or opp.id %}
+{% macro v(name, default='') -%}{{ form.get(name, default) if form else default }}{%- endmacro %}
+
+<form id="log-form" class="log-form" method="post" action="/opportunities/{{ ref }}/activities"
+      hx-post="/opportunities/{{ ref }}/activities" hx-target="#conversations" hx-swap="outerHTML">
+
+  {% if errors %}<p class="form-error-summary" role="alert">Some fields need attention.</p>{% endif %}
+
+  <div class="field-grid">
+    <div class="field{% if errors.get('activity_type') %} has-error{% endif %}">
+      <label for="a-type">Type</label>
+      <select id="a-type" name="activity_type">
+        {% for t in options.activity_types %}
+        <option value="{{ t.code }}" {% if v('activity_type', 'call') == t.code %}selected{% endif %}>{{ t.label }}</option>
+        {% endfor %}
+      </select>
+    </div>
+
+    <div class="field{% if errors.get('occurred_at') %} has-error{% endif %}">
+      <label for="a-when">When</label>
+      <input id="a-when" type="datetime-local" name="occurred_at" value="{{ v('occurred_at', now_local) }}">
+      {% if errors.get('occurred_at') %}<span class="field-error">{{ errors.get('occurred_at') }}</span>{% endif %}
+    </div>
+
+    <div class="field">
+      <label for="a-author">Logged by</label>
+      <select id="a-author" name="author_rep_id">
+        {% for r in options.reps %}
+        <option value="{{ r.id }}" {% if (v('author_rep_id', opp.sales_rep_id)|string) == (r.id|string) %}selected{% endif %}>{{ r.display_name }}</option>
+        {% endfor %}
+      </select>
+    </div>
+
+    <div class="field field-wide{% if errors.get('details') %} has-error{% endif %}">
+      <label for="a-details">What was said</label>
+      <textarea id="a-details" name="details" rows="2"
+                placeholder="Customer will confirm the floor area with the organiser by Friday.">{{ v('details') }}</textarea>
+      {% if errors.get('details') %}<span class="field-error">{{ errors.get('details') }}</span>{% endif %}
+    </div>
+  </div>
+
+  <fieldset class="promise">
+    <legend>Waiting on something?</legend>
+    <div class="field-grid">
+      <div class="field{% if errors.get('follow_up_on') %} has-error{% endif %}">
+        <label for="a-fu-date">Follow up on</label>
+        <input id="a-fu-date" type="date" name="follow_up_on" value="{{ v('follow_up_on') }}">
+        {% if errors.get('follow_up_on') %}<span class="field-error">{{ errors.get('follow_up_on') }}</span>{% endif %}
+      </div>
+      <div class="field field-wide{% if errors.get('follow_up_note') %} has-error{% endif %}">
+        <label for="a-fu-note">What we are waiting for</label>
+        <input id="a-fu-note" name="follow_up_note" value="{{ v('follow_up_note') }}"
+               placeholder="Floor area confirmed by the organiser">
+        {% if errors.get('follow_up_note') %}<span class="field-error">{{ errors.get('follow_up_note') }}</span>{% endif %}
+      </div>
+    </div>
+
+    {% if follow_ups %}
+    <div class="field">
+      <label for="a-completes">Does this answer an open follow-up?</label>
+      <select id="a-completes" name="completes_follow_up_id">
+        <option value="">No</option>
+        {% for f in follow_ups %}
+        <option value="{{ f.id }}" {% if (v('completes_follow_up_id')|string) == (f.id|string) %}selected{% endif %}>
+          Yes &mdash; due {{ f.due_on|dmy }}: {{ (f.note or '')[:60] }}
+        </option>
+        {% endfor %}
+      </select>
+    </div>
+    {% endif %}
+  </fieldset>
+
+  <div class="form-actions">
+    <button type="submit" class="btn btn-primary">Record</button>
+  </div>
+</form>

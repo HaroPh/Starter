@@ -32,7 +32,7 @@ from app.config import Settings, get_settings
 from app.db import migrate, pool
 from app.handoff import readiness_store
 from app.importer import runner as import_runner
-from app.routes import companies, health, home, opportunities, search
+from app.routes import companies, followups, health, home, opportunities, search
 from app.templating import build_templates
 
 logging.basicConfig(
@@ -125,6 +125,7 @@ def create_app(settings: Settings | None = None) -> FastAPI:
     app.include_router(search.router)
     app.include_router(companies.router)
     app.include_router(opportunities.router)
+    app.include_router(followups.router)
 
     @app.exception_handler(StarletteHTTPException)
     async def http_error_page(request: Request, exc: StarletteHTTPException):

@@ -1,0 +1,4 @@
+{# After logging: the conversation panel for its target, and the follow-ups panel refreshed
+   out-of-band, since logging may have created one follow-up or completed another. #}
+{% include "partials/_conversations.html" %}
+{% with oob=true %}{% include "partials/_followups_panel.html" %}{% endwith %}

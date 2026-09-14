@@ -1,0 +1,61 @@
+{% extends "base.html" %}
+{% block content %}
+
+<h1>Follow-ups</h1>
+<p class="lede">Who to call, and what you are waiting for. Oldest promises first.</p>
+
+{% set labels = {'overdue': 'Overdue', 'today': 'Today', 'week': 'Next 7 days', 'later': 'Later', 'all': 'All open'} %}
+
+<nav class="readiness-tabs" aria-label="When">
+  {% for key in ['overdue', 'today', 'week', 'later', 'all'] %}
+  <a href="/follow-ups?bucket={{ key }}{% if rep %}&amp;rep={{ rep }}{% endif %}{% if tasks %}&amp;tasks=1{% endif %}{% if q %}&amp;q={{ q|urlencode }}{% endif %}"
+     {% if bucket == key %}aria-current="page"{% endif %}
+     class="{% if key == 'overdue' and counts.overdue %}tab-alert{% endif %}">
+    {{ labels[key] }} <span class="count">{{ counts[key] }}</span>
+  </a>
+  {% endfor %}
+</nav>
+
+{# A separate form on purpose: it does NOT carry the current tab. Looking for one particular
+   follow-up is a search across every date, and the route widens to "all" when no tab is
+   given -- otherwise searching from "Overdue" would hide the Friday promise you came for. #}
+<form class="bigsearch" method="get" action="/follow-ups" role="search">
+  <input id="q-text" type="search" name="q" value="{{ q }}" aria-label="Find a follow-up"
+         placeholder="Exhibitor, OP code, or what you are waiting for">
+  {% if rep %}<input type="hidden" name="rep" value="{{ rep }}">{% endif %}
+  {% if tasks %}<input type="hidden" name="tasks" value="1">{% endif %}
+  <button type="submit" class="btn">Find</button>
+  {% if q %}<a class="btn" href="/follow-ups">Clear</a>{% endif %}
+</form>
+
+<form class="filters" method="get" action="/follow-ups">
+  <input type="hidden" name="bucket" value="{{ bucket }}">
+  {% if q %}<input type="hidden" name="q" value="{{ q }}">{% endif %}
+  <label for="q-rep">Account manager
+    <select id="q-rep" name="rep" onchange="this.form.submit()">
+      <option value="">Everyone</option>
+      {% for r in reps %}
+      <option value="{{ r.id }}" {% if rep == r.id %}selected{% endif %}>{{ r.display_name }}</option>
+      {% endfor %}
+    </select>
+  </label>
+  <label class="check" for="q-tasks">
+    <input id="q-tasks" type="checkbox" name="tasks" value="1" {% if tasks %}checked{% endif %} onchange="this.form.submit()">
+    Tasks only
+    <span class="field-hint">The archive marks only tasks as pending. Unticked, any conversation that asked for a follow-up counts as an open promise.</span>
+  </label>
+  <noscript><button type="submit" class="btn">Apply</button></noscript>
+</form>
+
+{% if page.items %}
+<ul class="queue" id="queue">
+  {% include "partials/_queue_rows.html" %}
+</ul>
+{% else %}
+<p class="empty">
+  {% if bucket == 'overdue' %}Nothing overdue. {% elif bucket == 'today' %}Nothing due today. {% else %}Nothing here. {% endif %}
+  {% if counts.all %}<a href="/follow-ups?bucket=all">See all {{ counts.all }} open follow-ups</a>.{% endif %}
+</p>
+{% endif %}
+
+{% endblock %}

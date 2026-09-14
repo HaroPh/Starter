@@ -1,0 +1,42 @@
+{% set ref = opp.legacy_code or opp.id %}
+<section class="panel" id="followups-panel" {% if oob %}hx-swap-oob="true"{% endif %}>
+  <h2>Open follow-ups <span class="count">{{ follow_ups|length }}</span></h2>
+
+  {% if follow_ups %}
+    <ul class="fu-list">
+      {% for f in follow_ups %}
+      <li class="{% if f.is_overdue %}is-overdue{% endif %}">
+        <span class="fu-date">{{ f.due_on|day_label }}</span>
+        {% if f.is_overdue %}<span class="pill pill-danger">overdue</span>{% endif %}
+        <span class="fu-note">{{ f.note }}</span>
+        <form method="post" action="/follow-ups/{{ f.id }}/complete" class="inline-form"
+              hx-post="/follow-ups/{{ f.id }}/complete" hx-target="closest li" hx-swap="outerHTML">
+          <input type="hidden" name="back" value="/opportunities/{{ ref }}">
+          <button type="submit" class="btn btn-small">Done</button>
+        </form>
+      </li>
+      {% endfor %}
+    </ul>
+  {% else %}
+    <p class="empty">Nothing waiting on this opportunity.</p>
+  {% endif %}
+
+  <details class="add-fu" {% if errors.get('due_on') or errors.get('note') %}open{% endif %}>
+    <summary class="linklike">Add a follow-up</summary>
+    <form method="post" action="/opportunities/{{ ref }}/follow-ups"
+          hx-post="/opportunities/{{ ref }}/follow-ups" hx-target="#followups-panel" hx-swap="outerHTML">
+      <div class="field{% if errors.get('due_on') %} has-error{% endif %}">
+        <label for="fu-due">Due</label>
+        <input id="fu-due" type="date" name="due_on" value="{{ form.get('due_on', '') if form else '' }}">
+        {% if errors.get('due_on') %}<span class="field-error">{{ errors.get('due_on') }}</span>{% endif %}
+      </div>
+      <div class="field{% if errors.get('note') %} has-error{% endif %}">
+        <label for="fu-note">Waiting for</label>
+        <input id="fu-note" name="note" value="{{ form.get('note', '') if form else '' }}"
+               placeholder="Height decision from the client">
+        {% if errors.get('note') %}<span class="field-error">{{ errors.get('note') }}</span>{% endif %}
+      </div>
+      <button type="submit" class="btn btn-small btn-primary">Add</button>
+    </form>
+  </details>
+</section>

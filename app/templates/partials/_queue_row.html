@@ -1,0 +1,51 @@
+{# One follow-up in the queue. Everything needed to act is on the row: who, what, which
+   opportunity, and the phone number -- the brief says account managers need to know "who to
+   call and what they're waiting for", so neither should take a click to find. #}
+<li class="queue-item{% if f.days_overdue and f.days_overdue > 0 %} is-overdue{% endif %}" id="fu-{{ f.id }}">
+  <div class="q-when">
+    <span class="q-date">{{ f.due_on|day_label }}</span>
+    {% if f.days_overdue and f.days_overdue > 0 %}
+      <span class="pill pill-danger">{{ f.days_overdue }} day{{ '' if f.days_overdue == 1 else 's' }} overdue</span>
+    {% elif f.days_overdue == 0 %}
+      <span class="pill pill-wait">today</span>
+    {% endif %}
+    {% if rescheduled %}<span class="pill pill-ok">moved</span>{% endif %}
+  </div>
+
+  <div class="q-body">
+    <p class="q-note">{{ f.note or 'Follow up' }}</p>
+    <p class="q-meta">
+      <a href="/companies/{{ f.company_code }}">{{ f.company_name }}</a>
+      {% if f.opportunity_code %}
+        &middot; <a href="/opportunities/{{ f.opportunity_code }}">{{ f.opportunity_code }}</a>
+        {% if f.edition_code %}<span class="muted">{{ f.edition_code }}</span>{% endif %}
+      {% else %}
+        &middot; <span class="muted">company-level</span>
+      {% endif %}
+      {% if f.rep_name %}&middot; <span class="muted">{{ f.rep_name }}</span>{% endif %}
+    </p>
+    {% if f.contact_first_name %}
+    <p class="q-contact">
+      {{ f.contact_first_name }} {{ f.contact_last_name }}
+      {% if f.contact_phone %}&middot; <a href="tel:{{ f.contact_phone|replace(' ', '') }}">{{ f.contact_phone }}</a>
+      {% else %}&middot; <span class="missing">no phone</span>{% endif %}
+    </p>
+    {% endif %}
+  </div>
+
+  <div class="q-actions">
+    <form method="post" action="/follow-ups/{{ f.id }}/complete"
+          hx-post="/follow-ups/{{ f.id }}/complete" hx-target="#fu-{{ f.id }}" hx-swap="outerHTML">
+      <input type="hidden" name="back" value="/follow-ups">
+      <button type="submit" class="btn btn-small btn-primary">Done</button>
+    </form>
+    <form method="post" action="/follow-ups/{{ f.id }}/reschedule" class="resched"
+          hx-post="/follow-ups/{{ f.id }}/reschedule" hx-target="#fu-{{ f.id }}" hx-swap="outerHTML">
+      <input type="hidden" name="back" value="/follow-ups">
+      <label class="visually-hidden" for="rs-{{ f.id }}">New date</label>
+      <input id="rs-{{ f.id }}" type="date" name="due_on" required>
+      <button type="submit" class="btn btn-small">Move</button>
+    </form>
+    {% if errors and errors.get('due_on') %}<span class="field-error">{{ errors.get('due_on') }}</span>{% endif %}
+  </div>
+</li>
