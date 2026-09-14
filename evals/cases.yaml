@@ -1,0 +1,90 @@
+# Evaluation cases for the handoff assistant.
+#
+# Every case is SELECTED BY A QUERY, never by a hardcoded opportunity code. The reviewer
+# replaces data/ before running anything, so an eval pinned to "OP000003" would be testing an
+# assumption about the archive rather than the assistant. A query describes the situation --
+# "an open enquiry with a budget but no area and no height" -- and finds whatever row is in
+# that situation today.
+#
+# `select` is the body of a WHERE clause over `opportunity o` joined to `fair_edition fe`.
+# The first row by legacy code is used, so selection is deterministic.
+#
+# `expect` keys:
+#   decision        exact decision string
+#   readiness       exact readiness string
+#   iterations      exact number of preparer/checker passes
+#   brief_mentions  substrings the final brief must contain
+#   reason_mentions substrings the decision reason must contain
+#   tools_called    tool names that must appear in the trace
+#   tools_skipped   tool names that must NOT appear in the trace
+
+cases:
+  - name: complete_enquiry
+    why: Everything technical needs is known and the height fits. One pass, straight handover.
+    select: >
+      o.status IN ('open','qualified','proposal') AND fe.ends_on >= current_date
+      AND o.readiness = 'ready'
+    expect:
+      decision: handoff
+      readiness: ready
+      iterations: 1
+      tools_called: [get_opportunity, get_fair_edition, check_height_limit]
+      reason_mentions: ["within the edition limit"]
+
+  - name: missing_dimensions
+    why: >
+      The sales director's rule is met but the technical coordinator's is not. The first draft
+      proposes a handover, the checker objects, the second draft marks it provisional.
+    select: >
+      o.status IN ('open','qualified','proposal') AND fe.ends_on >= current_date
+      AND o.client_budget_eur IS NOT NULL
+      AND o.stand_area_sqm IS NULL AND o.requested_height_m IS NULL
+    expect:
+      decision: handoff_provisional
+      readiness: provisional
+      iterations: 2
+      tools_skipped: [check_height_limit]
+      brief_mentions: ["What floor area has the organiser allocated?", "What stand height does the customer want?"]
+
+  - name: height_conflict
+    why: A requested height above the edition limit is a conflict, not missing information.
+    select: >
+      o.status IN ('open','qualified','proposal') AND fe.ends_on >= current_date
+      AND o.readiness = 'blocked'
+    expect:
+      decision: blocked
+      readiness: blocked
+      tools_called: [check_height_limit]
+      reason_mentions: ["no exceptions are recorded"]
+      brief_mentions: ["OVER THE EDITION LIMIT"]
+
+  - name: no_budget
+    why: Without a customer budget not even the director's threshold is met.
+    select: >
+      o.status IN ('open','qualified','proposal') AND fe.ends_on >= current_date
+      AND o.client_budget_eur IS NULL AND o.stand_area_sqm IS NOT NULL
+      AND o.requested_height_m IS NOT NULL
+    expect:
+      decision: hold
+      readiness: incomplete
+      reason_mentions: ["customer budget"]
+
+  - name: finished_edition
+    why: >
+      7,823 archive rows are READY for a fair that has already been held. Complete information
+      about a stand for a finished fair is history, not a handoff.
+    select: >
+      fe.ends_on < current_date AND o.readiness = 'ready'
+    expect:
+      decision: edition_finished
+      readiness: ready
+
+  - name: no_conversations
+    why: >
+      1,442 opportunities have no logged activity at all. The assistant must say so in the
+      brief rather than omit the section or fail.
+    select: >
+      fe.ends_on >= current_date
+      AND NOT EXISTS (SELECT 1 FROM activity a WHERE a.opportunity_id = o.id)
+    expect:
+      brief_mentions: ["No conversations recorded against this opportunity."]

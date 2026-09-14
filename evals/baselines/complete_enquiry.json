@@ -1,0 +1,22 @@
+{
+  "decision": "handoff",
+  "iterations": 1,
+  "model_is_stub": true,
+  "readiness": "ready",
+  "steps": [
+    "preparer/plan",
+    "preparer/plan",
+    "preparer/plan",
+    "preparer/plan",
+    "preparer/draft",
+    "checker/review",
+    "coordinator/decide"
+  ],
+  "tools": [
+    "get_opportunity",
+    "get_fair_edition",
+    "list_recent_activities",
+    "list_open_follow_ups",
+    "check_height_limit"
+  ]
+}

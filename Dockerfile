@@ -28,6 +28,7 @@ COPY app ./app
 # ---------------------------------------------------------------------------
 # Test/eval target: same tree, plus dev dependencies. Kept out of the runtime image.
 FROM builder AS test
+ENV PATH="/app/.venv/bin:$PATH"
 RUN uv sync --frozen
 COPY tests ./tests
 COPY evals ./evals
