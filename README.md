@@ -23,7 +23,7 @@ something is listening, not that it is this app.
 Tests and evaluation need no host Python:
 
 ```bash
-docker compose --profile test run --rm tests    # ruff + 56 unit tests
+docker compose --profile test run --rm tests    # ruff + 65 unit tests
 docker compose --profile eval run --rm evals    # the assistant, end to end, through its API
 ```
 
@@ -191,6 +191,25 @@ never modified; running again adds a new one, optionally with edited sales notes
 
 JSON API: `POST /api/opportunities/{code}/handoff/runs`, `GET /api/handoff/runs/{id}`.
 
+### What a misbehaving model can do to a run
+
+The stand-in behaves, so the question is what happens when a real model does not. A set of
+model doubles ([`tests/unit/test_misbehaving_model.py`](tests/unit/test_misbehaving_model.py))
+each misbehave in one way, and two of them broke the assistant:
+
+| The model… | Before | Now |
+|---|---|---|
+| reads the exhibitor's *other* enquiry "for context" | the run's facts were **replaced by last year's order** and the brief was about the wrong edition | the call is refused and recorded; the brief stays about this enquiry |
+| looks up last year's edition instead of this one | a **false Blocked**: 4 m against a limit that did not apply | refused; the run holds and says the edition was not read |
+| returns a call in the wrong shape, or `tool_calls: null` | the run crashed and recorded nothing | each becomes a refused call in the trace; the run carries on |
+| asks for 500 tool calls in one round | all 500 ran | eight run, one trace line says the rest did not |
+| checks the height against a limit it made up | already safe: the checker rules from the edition, not from the preparer's arithmetic | unchanged, now pinned by a test |
+
+The rule behind the fix: **the model chooses whether to look, never where.** Each tool declares
+which argument names its target and the runtime fills it from the run; leave it blank and it is
+supplied, name anything else and the call is refused. After the change the evaluation's regression
+gate reported every case byte-identical — the guard changed nothing for a model that behaves.
+
 ## Evaluation
 
 `docker compose --profile eval run --rm evals` runs six cases through the API and applies four
@@ -246,6 +265,6 @@ app/
   routes/       HTML pages and the JSON API
   templates/    Jinja2 + htmx partials
 evals/          cases, runner, committed baselines
-tests/unit/     policy, forms, orchestration
+tests/unit/     policy, forms, orchestration, misbehaving model
 DECISIONS.md    every significant choice and what it beat
 ```

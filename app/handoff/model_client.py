@@ -304,7 +304,8 @@ class DeterministicStubModel:
             parts.append("The draft proposal matches that rating. No changes needed.")
         else:
             if not agrees:
-                parts.append(f"The draft proposes “{proposal.replace('_', ' ')}”, "
+                proposed = f"“{proposal.replace('_', ' ')}”" if proposal else "no readable next step"
+                parts.append(f"The draft proposes {proposed}, "
                              f"but the rating calls for “{expected.replace('_', ' ')}”.")
             if unasked:
                 parts.append("The brief does not ask for the "

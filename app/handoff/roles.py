@@ -52,6 +52,7 @@ from app.handoff.policy import (
 # chain here (opportunity -> edition -> height check); a fourth would only ever be a model
 # asking for something it already has.
 MAX_TOOL_ROUNDS = 4
+MAX_CALLS_PER_ROUND = 8   # the stand-in never asks for more than five in a whole run
 
 # What the checker expects the preparer to have proposed, for each readiness state.
 EXPECTED_PROPOSAL = {
@@ -117,6 +118,67 @@ class Decision:
 # preparer
 
 
+def tool_scope(state: HandoffState) -> dict[str, list[str]]:
+    """What "this run" means to each scoped tool argument. See tools.apply_scope.
+
+    The opportunity is known from the start, by whatever reference the run was started
+    with; once it has been read, its legacy code becomes the canonical value and its numeric
+    id an alias. The edition is only known once the opportunity has named one -- so before
+    that point, no edition tool can be called, and an opportunity with no edition has no
+    edition to look up.
+    """
+    opp = state.observed.get("get_opportunity") or {}
+    opportunity = [state.opportunity_ref]
+    if opp.get("opportunity_code"):
+        opportunity.insert(0, str(opp["opportunity_code"]))
+    if opp.get("opportunity_id") is not None:
+        opportunity.append(str(opp["opportunity_id"]))
+    scope = {"opportunity_code": list(dict.fromkeys(opportunity))}
+    if opp.get("fair_edition_code"):
+        scope["fair_edition_code"] = [str(opp["fair_edition_code"])]
+    return scope
+
+
+def _as_dict(data: Any) -> dict:
+    """A model's structured output is only usable if it is an object; anything else is noted."""
+    return data if isinstance(data, dict) else {"malformed": repr(data)[:200]}
+
+
+def _execute_plan(state: HandoffState, conn: Connection, step_seq: int, plan: dict,
+                  tool_seq: int) -> int:
+    """Run one round of tool calls from a plan the model returned. Returns the next seq.
+
+    Nothing about the plan is trusted: `tool_calls` may not be a list, an entry may not be
+    an object with a string `tool` and an object `arguments`, and there may be far too many.
+    Each of those becomes a refused call in the trace, so a reviewer can see what the model
+    asked for and why it did not happen, and the round carries on with what it has.
+    """
+    calls = plan.get("tool_calls") or []
+    if not isinstance(calls, list):
+        calls = [calls]   # a single non-list value: one entry, refused below as malformed
+    scope = tool_scope(state)
+    for n, call in enumerate(calls):
+        tool_seq += 1
+        if n >= MAX_CALLS_PER_ROUND:
+            rec = tools.refused(tool_seq, "(limit)", {},
+                                f"{len(calls) - MAX_CALLS_PER_ROUND} further call(s) not executed: "
+                                f"at most {MAX_CALLS_PER_ROUND} per round")
+            state.tool_calls.append((step_seq, rec))
+            break
+        name = call.get("tool") if isinstance(call, dict) else None
+        arguments = (call.get("arguments") or {}) if isinstance(call, dict) else None
+        if not isinstance(name, str) or not isinstance(arguments, dict):
+            rec = tools.refused(tool_seq, "(malformed)", {"received": repr(call)[:200]},
+                                'malformed tool call: expected {"tool": name, "arguments": {...}}')
+        else:
+            rec = tools.execute(conn, name, arguments, tool_seq, scope=scope)
+        state.tool_calls.append((step_seq, rec))
+        if rec.ok:
+            state.observed[rec.tool_name] = rec.result
+            scope = tool_scope(state)   # reading the opportunity is what makes the edition callable
+    return tool_seq
+
+
 def preparer(state: HandoffState, model: ModelClient, conn: Connection) -> None:
     """Gather facts through tools (first pass only), then draft the brief."""
     if state.iteration == 0:
@@ -132,19 +194,15 @@ def preparer(state: HandoffState, model: ModelClient, conn: Connection) -> None:
             )
             started = time.perf_counter()
             response = model.complete(request)
+            plan = _as_dict(response.data)
             step = state.record(
                 role="preparer", phase="plan", request=_request_summary(request),
-                output_text=response.text, output_data=response.data, findings=[],
+                output_text=response.text, output_data=plan, findings=[],
                 duration_ms=_ms(started),
             )
-            if response.data.get("done"):
+            if plan.get("done"):
                 break
-            for call in response.data.get("tool_calls", []):
-                tool_seq += 1
-                rec = tools.execute(conn, call["tool"], call.get("arguments", {}), tool_seq)
-                state.tool_calls.append((step.seq, rec))
-                if rec.ok:
-                    state.observed[rec.tool_name] = rec.result
+            tool_seq = _execute_plan(state, conn, step.seq, plan, tool_seq)
 
     opp = state.observed.get("get_opportunity") or {}
     request = ModelRequest(
@@ -159,13 +217,13 @@ def preparer(state: HandoffState, model: ModelClient, conn: Connection) -> None:
     )
     started = time.perf_counter()
     response = model.complete(request)
-    state.draft_text = response.text
-    state.draft = response.data
+    state.draft_text = response.text if isinstance(response.text, str) else ""
+    state.draft = _as_dict(response.data)
     state.record(
         role="preparer", phase="draft",
         request={"feedback_codes": [f.get("code") for f in state.feedback],
                  "brief_source": "edited" if state.brief_override is not None else "opportunity"},
-        output_text=response.text, output_data=response.data, findings=[],
+        output_text=state.draft_text, output_data=state.draft, findings=[],
         duration_ms=_ms(started),
     )
 
@@ -203,8 +261,10 @@ def checker(state: HandoffState, model: ModelClient) -> None:
 
     expected = EXPECTED_PROPOSAL[verdict.readiness]
     proposal = state.draft.get("proposal")
+    proposal = proposal if isinstance(proposal, str) else None
     agrees = proposal == expected
-    asked = set(state.draft.get("open_questions", []))
+    questions = state.draft.get("open_questions")
+    asked = {q for q in questions if isinstance(q, str)} if isinstance(questions, list) else set()
     unasked = [m for m in verdict.missing if FIELD_QUESTIONS.get(m) not in asked]
     state.requires_revision = (not agrees) or bool(unasked)
     state.feedback = [asdict(f) for f in verdict.findings]

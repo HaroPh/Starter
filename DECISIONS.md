@@ -387,3 +387,32 @@ baseline and confirming the run exited 1.
 Flagging a customer budget far below the recorded value sounds like a useful "conflicting request".
 The archive has **0** such rows out of 14,635. Building a rule for an empty population would be
 complexity with no evidence behind it.
+
+## 34. The model chooses whether to look, never where — found with a misbehaving model — **measured**
+
+Everything above was verified with the deterministic stand-in, which is well behaved by
+construction. The question a real provider raises is what a *badly* behaved model can do to a run,
+so a set of model doubles in `tests/unit/test_misbehaving_model.py` each misbehave in one way. Two of
+them broke the assistant as it stood:
+
+- A model that, having read the opportunity, also read the exhibitor's other enquiry "for context"
+  **replaced the run's facts with last year's order**: the tools took whichever code the model
+  passed, and results were stored by tool name. The brief was about the wrong edition — the sales
+  coordinator's complaint, reproduced at the agent layer, with edition scoping in the SQL intact.
+- A model that looked up last year's edition instead of the one the enquiry names produced a
+  **false BLOCKED**, 4 m against a limit that did not apply — worse than a missing edition, because it
+  sends sales to argue with the customer about the wrong rule.
+- A tool call in the wrong shape (`{"name": …}` instead of `{"tool": …}`, or `tool_calls: null`)
+  raised inside the preparer, so a run that hit one recorded nothing.
+
+The fix is one rule: each tool declares which argument names its target, and the runtime fills it
+from the run. Left blank, it is supplied; set to another value, the call is **refused and the
+refusal is recorded** in the trace like any other call. A malformed call and calls beyond eight per
+round are recorded the same way. The alternative — silently overriding the model's argument and
+proceeding — would have hidden that the model wanted something else, and a model that wanders is
+exactly what an evaluation should surface. Refusing fails closed: a model that only ever asks for
+the wrong edition ends in *hold, edition not read*, which is true.
+
+The change touches the tool executor and the preparer and nothing else. The eval regression gate
+then ran against the same baselines and reported every case unchanged, which is the point of having
+a behavioural fingerprint: the guard changed nothing for a model that behaves.

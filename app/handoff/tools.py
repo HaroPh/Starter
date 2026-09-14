@@ -19,6 +19,14 @@ EDITION SCOPING IS ENFORCED HERE TOO. `list_recent_activities` filters on the op
 and never on the company. An assistant that gathered "everything about this exhibitor"
 would feed a 2027 brief the 2026 order value -- precisely the mistake the sales coordinator
 complains about, and one that 4,995 company-and-fair pairs in the archive are exposed to.
+
+THE MODEL CHOOSES WHETHER TO LOOK, NEVER WHERE. The SQL filter above only helps if the
+model asks about the right opportunity, and a real model will sometimes ask about the
+sibling "for context". So each tool declares which argument names its target (`scope_key`),
+and `execute` fills that argument from the run: left blank, it is supplied; set to anything
+else, the call is refused and the refusal is recorded. That was found with a deliberately
+misbehaving model double (tests/unit/test_misbehaving_model.py): before the guard, one
+stray call replaced the run's facts with last year's order.
 """
 
 from __future__ import annotations
@@ -182,18 +190,51 @@ class Tool:
     name: str
     description: str
     fn: Callable[[Connection, dict], dict]
+    scope_key: str | None = None
 
 
 REGISTRY: dict[str, Tool] = {
     t.name: t
     for t in (
-        Tool("get_opportunity", "The enquiry, its exhibitor, contact and fair edition code.", get_opportunity),
-        Tool("get_fair_edition", "Dates, venue and the maximum stand height for an edition.", get_fair_edition),
-        Tool("list_recent_activities", "Conversations logged against THIS opportunity only.", list_recent_activities),
-        Tool("list_open_follow_ups", "Promises still outstanding on this opportunity.", list_open_follow_ups),
+        Tool("get_opportunity", "The enquiry, its exhibitor, contact and fair edition code.", get_opportunity,
+             scope_key="opportunity_code"),
+        Tool("get_fair_edition", "Dates, venue and the maximum stand height for an edition.", get_fair_edition,
+             scope_key="fair_edition_code"),
+        Tool("list_recent_activities", "Conversations logged against THIS opportunity only.", list_recent_activities,
+             scope_key="opportunity_code"),
+        Tool("list_open_follow_ups", "Promises still outstanding on this opportunity.", list_open_follow_ups,
+             scope_key="opportunity_code"),
+        # Pure arithmetic over values the model passes. The checker never reads its result --
+        # it rules from the edition itself (roles.policy_input_from) -- so there is nothing
+        # here to scope.
         Tool("check_height_limit", "Whether a requested height fits an edition limit.", check_height_limit),
     )
 }
+
+SCOPE_LABELS = {"opportunity_code": "opportunity", "fair_edition_code": "fair edition"}
+
+
+def apply_scope(tool: Tool, arguments: dict, scope: dict[str, list[str]]) -> dict:
+    """Fill the tool's scoped argument from the run, or refuse the call.
+
+    `scope` maps an argument name to the values that mean "this run": the first is the
+    canonical one the tool receives, the rest are aliases a model might reasonably use (the
+    numeric id, the reference the run was started with). Matching ignores case. A scoped
+    tool whose scope is not known yet -- the edition before the opportunity has been read --
+    cannot be called at all, which is the order the stand-in follows anyway.
+    """
+    if tool.scope_key is None:
+        return arguments
+    allowed = scope.get(tool.scope_key) or []
+    label = SCOPE_LABELS.get(tool.scope_key, tool.scope_key)
+    if not allowed:
+        raise ToolError(f"refused: {tool.name} is scoped to the run's {label}, "
+                        "which is not known yet -- read the opportunity first")
+    asked = str(arguments.get(tool.scope_key) or "").strip()
+    if asked and asked.upper() not in {a.upper() for a in allowed}:
+        raise ToolError(f"refused: this run is scoped to {label} {allowed[0]!r}; "
+                        f"the model asked for {asked!r}")
+    return {**arguments, tool.scope_key: allowed[0]}
 
 
 @dataclass
@@ -207,21 +248,29 @@ class ToolCallRecord:
     duration_ms: int
 
 
-def execute(conn: Connection, name: str, arguments: dict, seq: int) -> ToolCallRecord:
+def refused(seq: int, tool_name: str, arguments: dict, error: str) -> ToolCallRecord:
+    """A call the runtime would not execute, recorded like any other so the trace shows it."""
+    return ToolCallRecord(seq, tool_name, dict(arguments), None, False, error, 0)
+
+
+def execute(conn: Connection, name: str, arguments: dict, seq: int, *,
+            scope: dict[str, list[str]] | None = None) -> ToolCallRecord:
     """Run one tool call and record it. Never raises: a failed call is a recorded result.
 
-    The preparer then carries on with what it has. An unknown tool name or a bad argument is
-    exactly what a real model produces sometimes, and a run that crashed on one would record
-    nothing useful about why.
+    The preparer then carries on with what it has. An unknown tool name, a bad argument or
+    a call outside the run's scope is exactly what a real model produces sometimes, and a
+    run that crashed on one would record nothing useful about why.
     """
     started = time.perf_counter()
     tool = REGISTRY.get(name)
+    asked = dict(arguments)
     try:
         if tool is None:
             raise ToolError(f"unknown tool {name!r}")
-        result = tool.fn(conn, dict(arguments))
-        return ToolCallRecord(seq, name, dict(arguments), result, True, None,
+        effective = apply_scope(tool, asked, scope or {})
+        result = tool.fn(conn, effective)
+        return ToolCallRecord(seq, name, effective, result, True, None,
                               int((time.perf_counter() - started) * 1000))
     except Exception as exc:  # noqa: BLE001 -- recorded, not propagated
-        return ToolCallRecord(seq, name, dict(arguments), None, False, str(exc),
+        return ToolCallRecord(seq, name, asked, None, False, str(exc),
                               int((time.perf_counter() - started) * 1000))
