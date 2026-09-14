@@ -1,0 +1,34 @@
+{
+  "dataset_version": "test-fixture-1",
+  "reference_time": "2027-01-15T09:00:00+01:00",
+  "format": {
+    "encoding": "UTF-8",
+    "delimiter": ";",
+    "line_endings": "LF"
+  },
+  "entities": {
+    "companies": 3,
+    "contacts": 5,
+    "opportunities": 7,
+    "activity_log_entries": 8,
+    "fair_editions": 3
+  },
+  "files": {
+    "companies_and_contacts.csv": {
+      "data_rows": 5,
+      "sha256": "93e96818f2244a7455333686137c36126c95a51d20670ae56e32a6f4e0e9d57f"
+    },
+    "fair_editions.csv": {
+      "data_rows": 3,
+      "sha256": "e8c792d26955d8edc8ce703497e21dcc70104cefd764b71a688114efc73a4166"
+    },
+    "opportunities.csv": {
+      "data_rows": 7,
+      "sha256": "032f4ca780b9123fb13941dacbe2fc3d187f671e75eabc86464e331e44d73b8c"
+    },
+    "activity_log.csv": {
+      "data_rows": 8,
+      "sha256": "ba727ae85754ad1330808f3877406e34be0517ff47656d60b340b379e33da5b7"
+    }
+  }
+}

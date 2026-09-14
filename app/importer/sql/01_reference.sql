@@ -60,12 +60,19 @@ ON CONFLICT (display_name) DO NOTHING;
 -- Authors seen in the activity log that no display name accounts for. They get a row so
 -- their activities can still be attributed, with the username standing in as the name and
 -- `derived_from` recording that this is all the archive knew.
+--
+-- An AMBIGUOUS username is excluded here on purpose. Without that exclusion this step saw
+-- "j.chen" attached to nobody -- because the rule above had deliberately declined to pick
+-- between Jamie Chen and John Chen -- and quietly created a third rep called "j.chen" for
+-- it, defeating the rule. Found by the fixture test, not by the archive: the supplied data
+-- has no ambiguous names, so no run on it could ever have shown this.
 INSERT INTO sales_rep (legacy_username, display_name, derived_from)
 SELECT DISTINCT btrim(a.legacy_author), btrim(a.legacy_author), 'author_only'
 FROM stg_activities a
 WHERE crm_blank_to_null(a.legacy_author) IS NOT NULL
   AND NOT EXISTS (SELECT 1 FROM sales_rep r WHERE r.legacy_username = btrim(a.legacy_author))
   AND NOT EXISTS (SELECT 1 FROM sales_rep r WHERE r.display_name = btrim(a.legacy_author))
+  AND NOT EXISTS (SELECT 1 FROM tmp_rep_ambiguous x WHERE x.derived_username = btrim(a.legacy_author))
 ON CONFLICT (display_name) DO NOTHING;
 
 INSERT INTO import_issue (import_run_id, severity, kind, source_file, message, details)

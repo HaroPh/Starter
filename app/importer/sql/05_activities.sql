@@ -39,7 +39,8 @@ SELECT
     crm_parse_date(s.follow_up_on)        AS follow_up_on,
     s.follow_up_on                        AS follow_up_raw,
     upper(crm_blank_to_null(s.completion_marker)) AS completion_marker,
-    r.id                                  AS author_rep_id
+    r.id                                  AS author_rep_id,
+    crm_blank_to_null(s.legacy_author)    AS legacy_author
 FROM stg_activities s
 LEFT JOIN company     c ON c.legacy_code = btrim(s.company_code)
 LEFT JOIN opportunity o ON o.legacy_code = crm_blank_to_null(s.opportunity_code)
@@ -129,14 +130,12 @@ SELECT %(run_id)s, 'warning', 'unknown_activity_type', 'activity_log.csv', 'acti
 FROM activity_type t WHERE t.is_known = false;
 
 INSERT INTO import_issue (import_run_id, severity, kind, source_file, source_row_ref,
-                          column_name, message)
+                          column_name, raw_value, message)
 SELECT %(run_id)s, 'warning', 'unmatched_author', 'activity_log.csv',
-       min(t.entry_id), 'legacy_author',
+       t.entry_id, 'legacy_author', t.legacy_author,
        'This author could not be matched to a sales rep, so the entry shows no author.'
 FROM tmp_act t
-WHERE t.company_id IS NOT NULL AND t.author_rep_id IS NULL
-GROUP BY t.entry_id
-HAVING count(*) > 0;
+WHERE t.company_id IS NOT NULL AND t.author_rep_id IS NULL AND t.legacy_author IS NOT NULL;
 
 INSERT INTO import_issue (import_run_id, severity, kind, source_file, message, details)
 SELECT %(run_id)s, 'info', 'observation', 'activity_log.csv',

@@ -1,0 +1,8 @@
+opportunity_code;company_code;contact_code;description;amount_eur;legacy_status;opened_on;expected_close_on;historical_campaign_code;fair_edition_code;stand_area_sqm;client_budget_eur;requested_height_m;brief_notes
+OP900001;CO900001;CO900001-P01;Complete enquiry;30000,00;Open;10/01/2027;28/02/2027;;TEST-2027;60,00;32000,00;4,00;"Reception; two meeting tables"
+OP900002;CO900001;CO900001-P02;No dimensions yet;25000,00; OPEN ;12/01/2027;;;TEST-2027;;25000,00;;Plot size still with the organiser
+OP900003;CO999999;;Orphan company;10000,00;Open;01/02/2027;;;TEST-2027;;10000,00;;
+OP900004;CO900002;CO900002-P01;Dirty values;12.500,00;Proposal;31/02/2027;15/03/2027;;TEST-2027;40,00;12500,00;3,50;
+OP900005;CO900002;CO900001-P01;Wrong-company contact and unknown edition;15000,00;Won;05/02/2027;;;NOPE-2030;50,00;15000,00;4,00;
+OP900006;CO900001;CO900001-P03;Unknown status and unknown limit;20000,00;quotation sent;06/02/2027;;;OPEN-2027;70,00;20000,00;6,00;
+OP900007;CO900001;;Last year, won;18000,00;Won;01/12/2025;20/01/2026;;TEST-2026;50,00;18000,00;3,50;"This agreement does not cover next year's stand"

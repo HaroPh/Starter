@@ -1,0 +1,4 @@
+fair_edition_code;fair_name;city;venue;starts_on;ends_on;max_stand_height_m
+TEST-2026;Test Fair;Bologna;Hall A;10/03/2026;13/03/2026;4,50
+TEST-2027;Test Fair;Bologna;Hall A;09/03/2027;12/03/2027;4,50
+OPEN-2027;Open Air Expo;Rimini;Outdoor;01/05/2027;03/05/2027;

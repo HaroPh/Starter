@@ -1,0 +1,6 @@
+legacy_row_id;company_code;company_name;province_code;region;sales_rep;contact_code;contact_first_name;contact_last_name;email;phone;fax;legacy_print_layout
+AN9000001;CO900001;Società Prova S.r.l.;BO;Emilia-Romagna;Alex Morgan;CO900001-P01;Anna;Rossi;anna.rossi@example.test;+39 051 1;;FORM-1|ROW-1|ARCHIVE-T
+AN9000002;CO900001;Società Prova S.r.l.;BO;Emilia-Romagna;Alex Morgan;CO900001-P02;Marco;Bianchi;marco.bianchi@example.test;+39 051 2;+39 051 3;FORM-1|ROW-2|ARCHIVE-T
+AN9000003;CO900001;Società Prova S.r.l.;BO;Emilia-Romagna;Alex Morgan;CO900001-P03;Luca;Verdi;;+39 051 4;;FORM-1|ROW-3|ARCHIVE-T
+AN9000004;CO900002;Prova Display S.p.A.;MI;Lombardy;Jamie Chen;CO900002-P01;Sara;Neri;sara.neri@example.test;;;FORM-2|ROW-1|ARCHIVE-T
+AN9000005;CO900003;Terza Prova S.n.c.;TO;Piedmont;John Chen;CO900003-P01;Paolo;Gallo;paolo.gallo@example.test;+39 011 1;;FORM-2|ROW-2|ARCHIVE-T

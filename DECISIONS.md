@@ -416,3 +416,21 @@ the wrong edition ends in *hold, edition not read*, which is true.
 The change touches the tool executor and the preparer and nothing else. The eval regression gate
 then ran against the same baselines and reported every case unchanged, which is the point of having
 a behavioural fingerprint: the guard changed nothing for a model that behaves.
+
+## 35. The importer tested against a fixture that breaks every rule — **measured**
+
+Until now the importer's evidence was the supplied archive: 0 errors, 0 warnings, counts matching
+the manifest. That is evidence for the happy path only, and the brief's hard requirement is the
+other path — the reviewer's copy of the data. So `tests/fixtures/data/` is a hand-written archive
+of ~25 rows with one problem per row, and `tests/integration/test_import_fixture.py` pins the
+consequence of each: kept or skipped, which issue, and always a completed run. It creates its own
+database and runs in the `tests` compose profile; on a host with no database it skips rather than
+fails. The fixture is deliberately **not** a sample of the export and the application never reads
+it — the brief forbids a hard-coded subset, and a test fixture should not look like one.
+
+It found two things the archive could not. First, the issue for an unmatched activity author did
+not record which username it was about, unlike every other issue. Second, and real: the rule for
+ambiguous author names ("link nothing") was defeated by the later step that admits unknown usernames
+as stand-in reps — `j.chen`, attached to nobody on purpose, was then created as a rep of its own and
+the entries attributed to it. One `NOT EXISTS` fixes it. After both changes the full archive imports
+identically: same counts, same six reps, same eleven informational rows, and the eval gates pass.

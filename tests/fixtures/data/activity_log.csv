@@ -1,0 +1,9 @@
+entry_id;company_code;opportunity_code;activity_type;occurred_at;details;follow_up_on;completion_marker;legacy_author
+AC900001;CO900001;OP900001;call;20/01/2027 10:30;"Confirmed the plot; do not reuse last year's order value";24/01/2027;Y;a.morgan
+AC900002;CO900001;OP900002;task;21/01/2027 09:00;Chase the organiser for the plot size;28/01/2027;N;a.morgan
+AC900003;CO900002;OP900001;note;22/01/2027 11:00;Points at another company's opportunity;;;j.chen
+AC900004;CO999999;;email;23/01/2027 12:00;Company does not exist;;Y;a.morgan
+AC900005;CO900001;OP900007;meeting;15/12/2025 14:00;Summer stand quotation accepted;;Y;a.morgan
+AC900006;CO900001;;webinar;31/02/2027 25:00;Unknown type and impossible timestamp;30/02/2027;;a.morgan
+AC900007;CO900001;OP900002;task;05/01/2027 08:00;Send the height options;06/01/2027;Y;z.nobody
+AC900008;CO900001;OP999999;email;02/02/2027 16:00;Opportunity code not in the export;;Y;a.morgan

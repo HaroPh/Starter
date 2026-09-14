@@ -23,7 +23,7 @@ something is listening, not that it is this app.
 Tests and evaluation need no host Python:
 
 ```bash
-docker compose --profile test run --rm tests    # ruff + 65 unit tests
+docker compose --profile test run --rm tests    # ruff + 79 tests (unit, and the importer against a fixture)
 docker compose --profile eval run --rm evals    # the assistant, end to end, through its API
 ```
 
@@ -62,7 +62,7 @@ Images are multi-architecture and nothing is pinned to amd64 or arm64. The runti
 
 ## Time spent
 
-**4 hours**: data profiling and planning first, then the build in the order of the commit
+**5 hours**: data profiling and planning first, then the build in the order of the commit
 history.
 
 ## How the team's competing requests were handled
@@ -140,6 +140,20 @@ errors, 0 warnings**, 11 recorded interpretations.
 | Follow-ups | Created from any activity carrying a follow-up date (5,718). The data README's narrower reading — only pending tasks — gives 1,192. `follow_up.origin` keeps both; the queue defaults to the broad reading and a checkbox narrows it. |
 | Checksums | Compared with `manifest.json` and recorded on mismatch, **never** used to refuse a load — the reviewer's archive is the one that must import. |
 | Idempotency | A completed-import row in the database, behind an advisory lock and a partial unique index. `docker compose down` keeps the volume but not the container, so only the database can remember that the import happened. |
+
+The supplied archive is clean, so running the importer on it proves the happy path and nothing
+else. [`tests/integration/test_import_fixture.py`](tests/integration/test_import_fixture.py)
+runs it against a **hand-written fixture archive** ([`tests/fixtures/data/`](tests/fixtures/data/)
+— test data, not a sample of the export, never read by the app) in which every row breaks one
+rule: a quoted `;`, an accented name, `" OPEN "`, `12.500,00`, 31 February, a company that
+does not exist, a contact and an opportunity of the wrong company, an unknown edition, an
+unknown activity type, an unknown author, an ambiguous one, and a manifest whose counts
+include the skipped rows. Each has a pinned consequence, and the load never aborts. Writing
+it found one real defect: an author name that two reps derive (*Jamie Chen*, *John Chen* →
+`j.chen`) is deliberately linked to nobody, but the fallback that admits unknown usernames as
+stand-in reps then created a third rep called `j.chen` and attributed the entries to it —
+defeating the rule. The supplied archive has no ambiguous names, so no run on it could have
+shown this.
 
 ## Scale
 
@@ -244,9 +258,6 @@ Measured, not guessed.
 
 ## Unfinished
 
-- **Import integration test.** The importer is verified by running it (counts, zero issues, a
-  second start skipping), but there is no automated test against a small fixture archive with
-  deliberately broken rows. That is the next test to write.
 - No screen for `import_issue`; the data is recorded and queryable, and summarised above.
 - Contacts and fair editions cannot be edited in the UI; follow-ups are scheduled from an
   opportunity, not from a company page.
@@ -266,5 +277,6 @@ app/
   templates/    Jinja2 + htmx partials
 evals/          cases, runner, committed baselines
 tests/unit/     policy, forms, orchestration, misbehaving model
+tests/integration/  the importer against a fixture archive with a problem in every row
 DECISIONS.md    every significant choice and what it beat
 ```
