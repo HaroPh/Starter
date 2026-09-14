@@ -18,6 +18,7 @@ flight sees either an empty database or a complete one -- never a half-imported 
 """
 
 import logging
+import threading
 from collections.abc import AsyncIterator
 from contextlib import asynccontextmanager
 from pathlib import Path
@@ -28,6 +29,7 @@ from fastapi.templating import Jinja2Templates
 
 from app.config import Settings, get_settings
 from app.db import migrate, pool
+from app.importer import runner as import_runner
 from app.routes import health, home
 
 logging.basicConfig(
@@ -37,6 +39,21 @@ logging.basicConfig(
 log = logging.getLogger("crm")
 
 BASE_DIR = Path(__file__).resolve().parent
+
+
+def _run_import_in_background(settings: Settings) -> None:
+    """Import the archive, and survive failing to.
+
+    A failed import must not take the application down. The reviewer gets a page that
+    explains what went wrong, with the error on /imports, rather than a container restarting
+    in a loop that can only be diagnosed through `docker logs`.
+    """
+    try:
+        import_runner.run_import(
+            pool.get_pool(), settings.crm_data_dir, settings.app_version
+        )
+    except Exception:  # noqa: BLE001 -- already recorded on import_run; keep serving
+        log.exception("archive import failed; the application continues to serve")
 
 
 @asynccontextmanager
@@ -52,7 +69,17 @@ async def lifespan(app: FastAPI) -> AsyncIterator[None]:
         applied = migrate.apply_all(conn)
     app.state.migrations_applied = applied
 
-    # Phase 2 starts the importer here, on a background thread, after the port is bound.
+    # The archive import runs on a background thread so the port binds immediately.
+    # verify.sh allows roughly ten seconds from container start and the import takes longer
+    # than that, so anything that blocks here fails a check that has nothing to do with
+    # reachability. Every page renders correctly while this is still running.
+    app.state.import_thread = threading.Thread(
+        target=_run_import_in_background,
+        args=(settings,),
+        name="archive-import",
+        daemon=True,
+    )
+    app.state.import_thread.start()
 
     yield
 
