@@ -30,6 +30,7 @@ from starlette.exceptions import HTTPException as StarletteHTTPException
 
 from app.config import Settings, get_settings
 from app.db import migrate, pool
+from app.handoff import readiness_store
 from app.importer import runner as import_runner
 from app.routes import companies, health, home, opportunities, search
 from app.templating import build_templates
@@ -56,6 +57,16 @@ def _run_import_in_background(settings: Settings) -> None:
         )
     except Exception:  # noqa: BLE001 -- already recorded on import_run; keep serving
         log.exception("archive import failed; the application continues to serve")
+        return
+
+    # After the import rather than before the port binds: recomputing tens of thousands of
+    # verdicts must never hold up verify.sh. If the policy changed since the data was last
+    # judged, this is what brings every stored verdict up to date.
+    try:
+        with pool.connection() as conn:
+            readiness_store.ensure_current(conn)
+    except Exception:  # noqa: BLE001 -- stale badges are better than a dead application
+        log.exception("readiness recompute failed; verdicts may be stale")
 
 
 @asynccontextmanager

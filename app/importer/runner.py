@@ -42,6 +42,7 @@ from pathlib import Path
 from psycopg import ClientCursor, Connection
 from psycopg_pool import ConnectionPool
 
+from app.handoff import readiness_store
 from app.importer import manifest as manifest_mod
 from app.importer.copy import CopyResult, copy_file
 
@@ -225,6 +226,12 @@ def _do_import(conn: Connection, run_id: int, data_dir: Path, mf) -> dict:
                 with ClientCursor(conn) as tcur:
                     tcur.execute(_read_sql(name), {"run_id": run_id})
                 log.info("  transform %-22s %6.0f ms", name, (time.perf_counter() - step) * 1000)
+
+            # Inside the same transaction as the rows, so a freshly imported archive is never
+            # visible without its readiness verdicts.
+            step = time.perf_counter()
+            readiness_store.recompute_all(conn)
+            log.info("  readiness %-22s %6.0f ms", "(policy.assess)", (time.perf_counter() - step) * 1000)
 
             row_counts = {}
             for table in COUNT_TABLES:
