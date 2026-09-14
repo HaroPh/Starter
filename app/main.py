@@ -27,6 +27,7 @@ from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
 
 from app.config import Settings, get_settings
+from app.db import migrate, pool
 from app.routes import health, home
 
 logging.basicConfig(
@@ -42,9 +43,20 @@ BASE_DIR = Path(__file__).resolve().parent
 async def lifespan(app: FastAPI) -> AsyncIterator[None]:
     settings: Settings = app.state.settings
     log.info("starting exhibition CRM v%s", settings.app_version)
-    # Phase 1 adds: pool open + migrations (synchronous, before the port binds).
-    # Phase 2 adds: the importer, started here on a background thread.
+
+    # Synchronous and before the port binds: the application is useless without a schema,
+    # and six files take well under a second. Anything slower than that belongs after the
+    # bind -- which is exactly where the archive import goes.
+    pool.open_pool(settings.database_url)
+    with pool.connection() as conn:
+        applied = migrate.apply_all(conn)
+    app.state.migrations_applied = applied
+
+    # Phase 2 starts the importer here, on a background thread, after the port is bound.
+
     yield
+
+    pool.close_pool()
     log.info("shutting down")
 
 
