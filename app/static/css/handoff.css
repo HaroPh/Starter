@@ -1,0 +1,86 @@
+/* The handoff assistant: its panel on the opportunity page and the run page. */
+
+.handoff-panel .panel-head form { margin: 0; }
+
+.stub-note {
+  margin: 0 0 12px; padding: 8px 12px; font-size: 0.86rem; color: var(--text-dim);
+  background: var(--surface-2); border-radius: var(--radius);
+}
+.stub-note strong { color: var(--text); }
+
+.runs-table td, .runs-table th { padding: 6px 8px; font-size: 0.88rem; }
+
+.banner-stub {
+  background: var(--accent-bg); color: var(--text); border-color: var(--accent);
+}
+
+/* ---------- the decision ---------- */
+
+.decision-card {
+  margin: 0 0 18px; padding: 14px 18px; border-radius: var(--radius);
+  background: var(--surface); border: 1px solid var(--border); border-left-width: 5px;
+}
+.decision-handoff             { border-left-color: var(--ok); }
+.decision-handoff_provisional { border-left-color: var(--warn); }
+.decision-blocked             { border-left-color: var(--danger); }
+.decision-hold,
+.decision-edition_finished    { border-left-color: var(--neutral); }
+.decision-top { display: flex; gap: 12px; align-items: center; flex-wrap: wrap; }
+.decision-reason { margin: 10px 0 0; max-width: 75ch; font-size: 1rem; }
+
+.brief-text {
+  margin: 0; padding: 14px 16px; overflow-x: auto;
+  font-family: var(--mono); font-size: 0.84rem; line-height: 1.6; white-space: pre-wrap;
+  background: var(--surface-2); border-radius: var(--radius); color: var(--text);
+}
+
+/* ---------- the trace ---------- */
+
+.trace { list-style: none; margin: 0; padding: 0; display: grid; gap: 0; }
+.trace-step {
+  position: relative; padding: 10px 0 12px 16px;
+  border-left: 2px solid var(--border); margin-left: 12px;
+}
+.trace-step.role-preparer    { border-left-color: var(--accent); }
+.trace-step.role-checker     { border-left-color: var(--warn); }
+.trace-step.role-coordinator { border-left-color: var(--ok); }
+
+.trace-head { display: flex; flex-wrap: wrap; gap: 6px 10px; align-items: center; }
+.trace-seq {
+  position: absolute; left: -13px; top: 10px; width: 24px; height: 24px;
+  display: grid; place-items: center; border-radius: 50%;
+  font-size: 0.72rem; font-weight: 700; font-variant-numeric: tabular-nums;
+  background: var(--surface); border: 2px solid var(--border); color: var(--text-dim);
+}
+.role-badge {
+  font-size: 0.72rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.06em;
+  padding: 2px 8px; border-radius: 4px; background: var(--surface-2); color: var(--text-dim);
+}
+.role-preparer .role-badge    { background: var(--accent-bg); color: var(--accent); }
+.role-checker .role-badge     { background: var(--warn-bg); color: var(--warn); }
+.role-coordinator .role-badge { background: var(--ok-bg); color: var(--ok); }
+
+.trace-text { margin: 6px 0 0; font-size: 0.92rem; max-width: 75ch; }
+.trace-draft { margin-top: 6px; }
+.trace-draft > summary { cursor: pointer; font-size: 0.88rem; color: var(--accent); }
+.trace-draft .brief-text { margin-top: 8px; }
+
+.tool-calls { list-style: none; margin: 8px 0 0; padding: 0; display: grid; gap: 4px; }
+.tool-calls li { font-size: 0.85rem; }
+.tool-calls summary {
+  cursor: pointer; display: flex; flex-wrap: wrap; gap: 4px 10px; align-items: center;
+  padding: 4px 8px; border-radius: 4px; background: var(--surface-2);
+}
+.tool-calls .muted { font-family: var(--mono); font-size: 0.78rem; overflow-wrap: anywhere; }
+.tool-failed summary { background: var(--danger-bg); }
+
+.json {
+  margin: 6px 0 0; padding: 10px 12px; overflow-x: auto; max-height: 360px;
+  font-family: var(--mono); font-size: 0.78rem; line-height: 1.5;
+  background: var(--surface-2); border-radius: var(--radius);
+}
+
+.check-line { display: flex; gap: 8px; align-items: center; margin-top: 10px; font-size: 0.88rem; }
+.inputs { margin-top: 12px; }
+
+.banner + .record-head { margin-top: 16px; }

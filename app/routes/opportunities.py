@@ -20,6 +20,7 @@ from fastapi.responses import HTMLResponse, RedirectResponse
 
 from app import forms
 from app.db import pool
+from app.handoff import store as handoff_store
 from app.repositories import followups as fu_repo
 from app.repositories import opportunities as repo
 from app.repositories import writes
@@ -41,6 +42,7 @@ def _page_context(conn, opp: dict, **extra) -> dict:
         "timeline": repo.timeline(conn, oid),
         "follow_ups": repo.open_follow_ups(conn, oid),
         "siblings": repo.sibling_editions(conn, oid),
+        "handoff_runs": handoff_store.list_runs(conn, oid),
         "options": writes.edit_form_options(conn, opp["company_id"]),
         "now_local": datetime.now(ROME).strftime("%Y-%m-%dT%H:%M"),
         "errors": forms.FormErrors(),

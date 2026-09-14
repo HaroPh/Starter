@@ -31,8 +31,9 @@ from starlette.exceptions import HTTPException as StarletteHTTPException
 from app.config import Settings, get_settings
 from app.db import migrate, pool
 from app.handoff import readiness_store
+from app.handoff.model_client import create_model_client
 from app.importer import runner as import_runner
-from app.routes import companies, followups, health, home, opportunities, search
+from app.routes import companies, followups, handoff, health, home, opportunities, search
 from app.templating import build_templates
 
 logging.basicConfig(
@@ -114,6 +115,9 @@ def create_app(settings: Settings | None = None) -> FastAPI:
         redoc_url=None,
     )
     app.state.settings = settings
+    # Chosen once, here, and passed down explicitly -- the dependency-injection seam. The
+    # orchestration never imports a concrete model; a real provider would be wired in this line.
+    app.state.model_client = create_model_client()
 
     templates = build_templates(str(BASE_DIR / "templates"), settings.app_version)
     app.state.templates = templates
@@ -126,6 +130,7 @@ def create_app(settings: Settings | None = None) -> FastAPI:
     app.include_router(companies.router)
     app.include_router(opportunities.router)
     app.include_router(followups.router)
+    app.include_router(handoff.router)
 
     @app.exception_handler(StarletteHTTPException)
     async def http_error_page(request: Request, exc: StarletteHTTPException):

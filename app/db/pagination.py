@@ -20,9 +20,7 @@ import base64
 import json
 from dataclasses import dataclass, field
 from datetime import date, datetime
-from typing import Any, Generic, TypeVar
-
-T = TypeVar("T")
+from typing import Any
 
 DEFAULT_PAGE_SIZE = 25
 MAX_PAGE_SIZE = 100
@@ -58,7 +56,7 @@ def clamp_page_size(requested: int | None, default: int = DEFAULT_PAGE_SIZE) -> 
 
 
 @dataclass(frozen=True)
-class Page(Generic[T]):
+class Page[T]:
     """One page of results plus the cursor that follows it."""
 
     items: list[T] = field(default_factory=list)
@@ -69,7 +67,7 @@ class Page(Generic[T]):
         return self.next_cursor is not None
 
 
-def build_page(rows: list[T], page_size: int, key: Any) -> Page[T]:
+def build_page[T](rows: list[T], page_size: int, key: Any) -> Page[T]:
     """Trim an over-fetched result set into a page.
 
     Callers ask for `page_size + 1` rows. If the extra row came back there is another page,

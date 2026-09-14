@@ -1,0 +1,36 @@
+{% set ref = opp.legacy_code or opp.id %}
+<section class="panel handoff-panel" id="handoff">
+  <div class="panel-head">
+    <h2>Technical handoff assistant</h2>
+    <form method="post" action="/opportunities/{{ ref }}/handoff/runs">
+      {% if handoff_runs %}<input type="hidden" name="previous_run_id" value="{{ handoff_runs[0].id }}">{% endif %}
+      <button type="submit" class="btn btn-primary">{{ 'Prepare the brief again' if handoff_runs else 'Prepare a technical brief' }}</button>
+    </form>
+  </div>
+
+  <p class="stub-note">
+    <strong>Deterministic stand-in, not a language model.</strong>
+    Three roles &mdash; a preparer that gathers facts through tools, a checker that applies the
+    handoff policy, and a coordinator that decides &mdash; produce a brief and a recommendation.
+    No API keys, no network calls. The same inputs always give the same output.
+  </p>
+
+  {% if handoff_runs %}
+  <table class="runs-table">
+    <thead><tr><th>Run</th><th>When</th><th>Decision</th><th>Passes</th><th>Brief</th></tr></thead>
+    <tbody>
+      {% for r in handoff_runs[:5] %}
+      <tr>
+        <td><a href="/handoff/runs/{{ r.id }}">#{{ r.run_no }}</a></td>
+        <td>{{ r.started_at|dmyhm }}</td>
+        <td><span class="pill {{ r.decision|decision_class }}">{{ r.decision|decision_label }}</span></td>
+        <td>{{ r.iterations }}</td>
+        <td>{{ 'edited' if r.brief_source == 'edited' else 'as recorded' }}</td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+  {% else %}
+  <p class="empty">No brief prepared yet.</p>
+  {% endif %}
+</section>

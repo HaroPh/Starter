@@ -87,7 +87,8 @@ def opportunities_by_edition(conn: Connection, company_id: int) -> list[dict[str
                     'readiness',          o.readiness,
                     'opened_on',          o.opened_on,
                     'expected_close_on',  o.expected_close_on,
-                    'contact_name',       nullif(btrim(coalesce(ct.first_name,'') || ' ' || coalesce(ct.last_name,'')), '')
+                    'contact_name',
+                        nullif(btrim(coalesce(ct.first_name, '') || ' ' || coalesce(ct.last_name, '')), '')
                 ) ORDER BY o.opened_on DESC NULLS LAST, o.id DESC) AS opportunities
             FROM opportunity o
             JOIN company c       ON c.id  = o.company_id

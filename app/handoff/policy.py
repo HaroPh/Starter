@@ -130,6 +130,18 @@ def _fmt(value: Decimal) -> str:
     return f"{value:.2f}"
 
 
+def height_within_limit(requested: Decimal | None, limit: Decimal | None) -> bool | None:
+    """The one definition of "is this height allowed". None when it cannot be decided.
+
+    Exposed so the assistant's `check_height_limit` tool uses exactly this comparison rather
+    than a second copy of it. The operator is `<=`: 1,210 opportunities in the archive request
+    a height exactly equal to their edition's limit, and they are allowed.
+    """
+    if requested is None or limit is None:
+        return None
+    return requested <= limit
+
+
 def assess(facts: PolicyInput) -> ReadinessVerdict:
     """Rule on how ready an enquiry is to go to the technical team."""
     findings: list[Finding] = []
@@ -176,11 +188,7 @@ def assess(facts: PolicyInput) -> ReadinessVerdict:
                     "height cannot be confirmed as allowed.",
         ))
 
-    if (
-        limit_known
-        and facts.requested_height_m is not None
-        and facts.requested_height_m > facts.max_stand_height_m  # type: ignore[operator]
-    ):
+    if limit_known and height_within_limit(facts.requested_height_m, facts.max_stand_height_m) is False:
         conflict = Finding(
             code="height_exceeds_limit", severity="conflict", field="requested_height_m",
             message=(
