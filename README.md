@@ -62,8 +62,8 @@ Images are multi-architecture and nothing is pinned to amd64 or arm64. The runti
 
 ## Time spent
 
-About **3 hours** of focused work: data profiling and planning first, then the build in the
-order of the commit history.
+**4 hours**: data profiling and planning first, then the build in the order of the commit
+history.
 
 ## How the team's competing requests were handled
 
