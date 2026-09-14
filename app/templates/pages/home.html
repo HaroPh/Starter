@@ -1,0 +1,25 @@
+{% extends "base.html" %}
+{% block content %}
+
+<h1>Overview</h1>
+
+<p class="lede">
+  A working tool for six salespeople handling stand enquiries across four fairs and sixteen
+  editions. Find an exhibitor, see what is open for <em>this</em> edition, record what was said,
+  and turn a promise into something you can find again.
+</p>
+
+<section class="panel">
+  <h2>Status</h2>
+  <dl class="kv">
+    <dt>Application</dt><dd><span class="pill pill-ok">running</span></dd>
+    <dt>Database</dt><dd><span class="pill pill-wait">not wired yet</span></dd>
+    <dt>Archive import</dt><dd><span class="pill pill-wait">not wired yet</span></dd>
+  </dl>
+  <p class="muted">
+    Schema and importer arrive in the next step. This page stays reachable in every state,
+    including while the import is still running, because <code>verify.sh</code> checks it.
+  </p>
+</section>
+
+{% endblock %}

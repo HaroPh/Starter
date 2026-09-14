@@ -1,0 +1,177 @@
+/* Hand-written, ~200 lines, no build step.
+   Tailwind needs Node; a CDN stylesheet breaks the offline requirement; a vendored
+   Bootstrap would be 200 KB of rules we do not use. Custom properties give theming for
+   free and keep every value in one place. */
+
+:root {
+  color-scheme: light dark;
+
+  --bg:        #f6f7f9;
+  --surface:   #ffffff;
+  --surface-2: #f0f2f5;
+  --border:    #d9dde3;
+  --text:      #12161c;
+  --text-dim:  #5c6672;
+  --accent:    #1f6feb;
+  --accent-bg: #e7f0ff;
+
+  --ok:       #1a7f45;  --ok-bg:       #e3f5ea;
+  --warn:     #9a6300;  --warn-bg:     #fdf1d8;
+  --danger:   #b3261e;  --danger-bg:   #fde8e6;
+  --neutral:  #495562;  --neutral-bg:  #e9edf1;
+
+  --radius: 8px;
+  --gap: 16px;
+  --mono: ui-monospace, "SF Mono", "Cascadia Mono", Menlo, Consolas, monospace;
+  --sans: system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --bg:        #0f1216;
+    --surface:   #161b22;
+    --surface-2: #1d232c;
+    --border:    #2b323c;
+    --text:      #e6edf3;
+    --text-dim:  #9aa6b2;
+    --accent:    #6ea8fe;
+    --accent-bg: #16243c;
+
+    --ok:      #5bc98a;  --ok-bg:     #11291c;
+    --warn:    #e3b341;  --warn-bg:   #2b2213;
+    --danger:  #ff8b83;  --danger-bg: #33191a;
+    --neutral: #a7b2bf;  --neutral-bg:#222a33;
+  }
+}
+
+* { box-sizing: border-box; }
+
+body {
+  margin: 0;
+  font: 15px/1.55 var(--sans);
+  color: var(--text);
+  background: var(--bg);
+  -webkit-text-size-adjust: 100%;
+}
+
+.wrap { max-width: 1060px; margin: 0 auto; padding-inline: 16px; }
+
+.skip {
+  position: absolute; left: -9999px;
+  background: var(--accent); color: #fff; padding: 8px 14px; border-radius: 0 0 var(--radius) 0;
+}
+.skip:focus { left: 0; top: 0; z-index: 100; }
+
+/* ---------- top bar ---------- */
+
+.topbar {
+  background: var(--surface);
+  border-bottom: 1px solid var(--border);
+  position: sticky; top: 0; z-index: 20;
+}
+.topbar-inner {
+  max-width: 1060px; margin: 0 auto; padding: 10px 16px;
+  display: flex; align-items: center; gap: var(--gap); flex-wrap: wrap;
+}
+
+.brand { display: flex; align-items: center; gap: 9px; text-decoration: none; color: var(--text); font-weight: 650; }
+.brand-mark {
+  width: 18px; height: 18px; border-radius: 5px; flex: none;
+  background: linear-gradient(140deg, var(--accent), #7b4dff);
+}
+.brand-text { white-space: nowrap; }
+
+.searchbar { flex: 1 1 260px; min-width: 0; }
+.searchbar input {
+  width: 100%; padding: 8px 12px; font: inherit;
+  color: var(--text); background: var(--surface-2);
+  border: 1px solid var(--border); border-radius: var(--radius);
+}
+.searchbar input:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
+
+.mainnav { display: flex; gap: 4px; }
+.mainnav a {
+  padding: 7px 11px; border-radius: var(--radius);
+  color: var(--text-dim); text-decoration: none; white-space: nowrap;
+}
+.mainnav a:hover { background: var(--surface-2); color: var(--text); }
+.mainnav a[aria-current="page"] { background: var(--accent-bg); color: var(--accent); font-weight: 600; }
+
+/* ---------- content ---------- */
+
+h1 { font-size: 1.55rem; margin: 26px 0 6px; letter-spacing: -0.01em; }
+h2 { font-size: 1.05rem; margin: 0 0 12px; }
+h3 { font-size: 0.95rem; margin: 0 0 8px; }
+
+.lede { color: var(--text-dim); max-width: 68ch; margin-top: 0; }
+.muted { color: var(--text-dim); font-size: 0.9rem; }
+
+.panel {
+  background: var(--surface); border: 1px solid var(--border);
+  border-radius: var(--radius); padding: 16px; margin-block: var(--gap);
+}
+
+code {
+  font-family: var(--mono); font-size: 0.88em;
+  background: var(--surface-2); padding: 1px 5px; border-radius: 4px;
+}
+
+.kv { display: grid; grid-template-columns: minmax(120px, max-content) 1fr; gap: 6px 18px; margin: 0; }
+.kv dt { color: var(--text-dim); }
+.kv dd { margin: 0; }
+
+/* ---------- pills / badges ---------- */
+
+.pill {
+  display: inline-block; padding: 2px 9px; border-radius: 999px;
+  font-size: 0.8rem; font-weight: 600; white-space: nowrap;
+  background: var(--neutral-bg); color: var(--neutral);
+}
+.pill-ok     { background: var(--ok-bg);     color: var(--ok); }
+.pill-wait   { background: var(--warn-bg);   color: var(--warn); }
+.pill-danger { background: var(--danger-bg); color: var(--danger); }
+.pill-info   { background: var(--accent-bg); color: var(--accent); }
+
+/* ---------- tables ---------- */
+
+.table-scroll { overflow-x: auto; }
+table { width: 100%; border-collapse: collapse; font-size: 0.93rem; }
+th, td { text-align: left; padding: 8px 10px; border-bottom: 1px solid var(--border); vertical-align: top; }
+th { color: var(--text-dim); font-weight: 600; white-space: nowrap; }
+tbody tr:last-child td { border-bottom: 0; }
+
+/* ---------- forms & buttons ---------- */
+
+button, .btn {
+  font: inherit; padding: 7px 14px; border-radius: var(--radius); cursor: pointer;
+  border: 1px solid var(--border); background: var(--surface-2); color: var(--text);
+  text-decoration: none; display: inline-block;
+}
+button:hover, .btn:hover { background: var(--border); }
+.btn-primary { background: var(--accent); border-color: var(--accent); color: #fff; }
+.btn-primary:hover { filter: brightness(1.08); background: var(--accent); }
+
+input, select, textarea {
+  font: inherit; color: var(--text); background: var(--surface);
+  border: 1px solid var(--border); border-radius: var(--radius); padding: 7px 10px;
+}
+textarea { width: 100%; resize: vertical; }
+
+/* ---------- footer ---------- */
+
+.foot {
+  display: flex; justify-content: space-between; gap: var(--gap); flex-wrap: wrap;
+  color: var(--text-dim); font-size: 0.85rem;
+  padding-block: 22px; margin-top: 32px; border-top: 1px solid var(--border);
+}
+
+/* htmx: show an element only while a request it triggered is in flight */
+.htmx-indicator { opacity: 0; transition: opacity 120ms; }
+.htmx-request .htmx-indicator, .htmx-request.htmx-indicator { opacity: 1; }
+
+@media (max-width: 620px) {
+  .topbar-inner { gap: 10px; }
+  .searchbar { order: 3; flex-basis: 100%; }
+  .kv { grid-template-columns: 1fr; gap: 2px 0; }
+  .kv dd { margin-bottom: 8px; }
+}

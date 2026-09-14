@@ -1,0 +1,28 @@
+# The archive is NEVER baked into the image. It is bind-mounted read-only at runtime
+# (./data:/srv/data:ro). Copying it in would leave a stale 12 MB snapshot inside the image,
+# and after the reviewer replaces data/ with their original copy, any code path reading the
+# baked copy would silently import the wrong data. This single line protects the central
+# requirement of the assignment.
+data/
+
+.git/
+.gitignore
+.gitattributes
+.dockerignore
+
+.venv/
+__pycache__/
+**/__pycache__/
+*.py[cod]
+.pytest_cache/
+.ruff_cache/
+.mypy_cache/
+
+*.md
+!app/static/vendor/VENDORED.md
+docs/
+
+.DS_Store
+.env
+.env.*
+!.env.example

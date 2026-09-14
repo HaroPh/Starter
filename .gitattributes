@@ -1,3 +1,6 @@
 * text=auto eol=lf
 *.sh text eol=lf
 *.csv text eol=lf
+
+# Keep vendored assets byte-identical so their recorded SHA-256 stays true.
+app/static/vendor/** -text

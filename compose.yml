@@ -1,3 +1,7 @@
+# A fixed project name makes the volume name deterministic regardless of the directory the
+# reviewer clones into, so `reset.sh`'s `down --volumes` is scoped to exactly this project.
+name: exhibition-crm
+
 services:
   db:
     image: postgres:17.6-alpine3.22
@@ -5,6 +9,21 @@ services:
       POSTGRES_DB: crm
       POSTGRES_USER: crm
       POSTGRES_PASSWORD: local-development-only
+      # POSTGRES_INITDB_ARGS is deliberately NOT set. Passing "--locale=C" without an
+      # explicit "--encoding=UTF8" makes initdb fall back to SQL_ASCII, which corrupts the
+      # ~50% of company names containing "Societa" with an accent. Verified against this
+      # exact image. The default (UTF8 / en_US.utf8) lowercases accented characters
+      # correctly, which is what the search path depends on.
+    command:
+      - postgres
+      - -c
+      - shared_buffers=256MB
+      - -c
+      - work_mem=16MB
+      - -c
+      - maintenance_work_mem=256MB
+      - -c
+      - effective_cache_size=2GB
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U crm -d crm"]
       interval: 2s
@@ -13,6 +32,58 @@ services:
       start_period: 5s
     volumes:
       - postgres-data:/var/lib/postgresql/data
+
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      target: runtime
+    image: exhibition-crm-app
+    depends_on:
+      db:
+        condition: service_healthy
+    environment:
+      DATABASE_URL: postgresql://crm:local-development-only@db:5432/crm
+      CRM_DATA_DIR: /srv/data
+      TZ: Europe/Rome
+    volumes:
+      # Read-only: the application provably cannot modify the supplied archive.
+      - ./data:/srv/data:ro
+    ports:
+      - "3000:3000"
+    # No `restart:` on purpose -- dev.sh runs in the foreground, so a crash must be visible
+    # rather than hidden behind a restart loop.
+
+  # Profiled services stay out of `./dev.sh` and out of `docker compose config --quiet`.
+  tests:
+    profiles: ["test"]
+    build:
+      context: .
+      dockerfile: Dockerfile
+      target: test
+    depends_on:
+      db:
+        condition: service_healthy
+    environment:
+      DATABASE_URL: postgresql://crm:local-development-only@db:5432/crm
+      CRM_TEST_DATABASE: crm_test
+      CRM_DATA_DIR: /srv/data
+    volumes:
+      - ./data:/srv/data:ro
+    command: ["sh", "-c", "ruff check . && pytest -q"]
+
+  evals:
+    profiles: ["eval"]
+    build:
+      context: .
+      dockerfile: Dockerfile
+      target: test
+    depends_on:
+      app:
+        condition: service_healthy
+    environment:
+      CRM_BASE_URL: http://app:3000
+    command: ["python", "evals/run_eval.py"]
 
 volumes:
   postgres-data:

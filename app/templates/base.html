@@ -1,0 +1,45 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>{% block title %}{{ title|default("Exhibition sales CRM") }}{% endblock %} &middot; Exhibition CRM</title>
+  <link rel="icon" href="/static/favicon.svg" type="image/svg+xml">
+  <link rel="stylesheet" href="/static/css/app.css?v={{ asset_version }}">
+  {# Vendored, not a CDN: the application must work with no internet at runtime. #}
+  <script src="/static/vendor/htmx-2.0.10.min.js?v={{ asset_version }}" defer></script>
+</head>
+<body>
+  <a class="skip" href="#main">Skip to content</a>
+
+  <header class="topbar">
+    <div class="topbar-inner">
+      <a class="brand" href="/">
+        <span class="brand-mark" aria-hidden="true"></span>
+        <span class="brand-text">Exhibition&nbsp;CRM</span>
+      </a>
+
+      <form class="searchbar" action="/search" method="get" role="search">
+        <input type="search" name="q" placeholder="Find an exhibitor, contact or code&hellip;"
+               value="{{ q|default('') }}" aria-label="Search" autocomplete="off" spellcheck="false">
+      </form>
+
+      <nav class="mainnav">
+        <a href="/opportunities" {% if nav == 'opportunities' %}aria-current="page"{% endif %}>Opportunities</a>
+        <a href="/follow-ups" {% if nav == 'followups' %}aria-current="page"{% endif %}>Follow-ups</a>
+      </nav>
+    </div>
+  </header>
+
+  {% block banner %}{% endblock %}
+
+  <main id="main" class="wrap">
+    {% block content %}{% endblock %}
+  </main>
+
+  <footer class="wrap foot">
+    <span>Exhibition sales CRM &middot; v{{ asset_version }}</span>
+    <span>Single-user tool &middot; no authentication by design</span>
+  </footer>
+</body>
+</html>
