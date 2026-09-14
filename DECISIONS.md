@@ -199,3 +199,191 @@ Resulting runtime image: 160 MB.
 Without it, the Compose project name is derived from whatever directory the reviewer clones
 into, and so is the volume name. Fixing it scopes `reset.sh`'s `down --volumes` to exactly this
 project's resources on any machine, which is what the brief asks for.
+
+---
+
+# Data layer
+
+## 14. Date parsers are plpgsql with an exception handler — **measured**
+
+The plan assumed `to_date` is lenient and silently turns `31/02/2026` into 2026-03-03, and guarded
+against it with a formatting round-trip. On PostgreSQL 17 it **raises** instead. That is better for
+data quality and fatal for a single-transaction import: one bad row would abort the load. Catching
+the error needs plpgsql.
+
+A pure-SQL alternative that checked the day against the real month length, needing no exception
+block, was benchmarked against it over 55,518 values: **818 ms against 83 ms**. The expectation was
+that avoiding a subtransaction per call would make it faster; the arithmetic cost more than the
+exception machinery saves.
+
+The pure-SQL version was more correct in one respect — `to_date('00/01/2026')` returns 2026-01-01 —
+so the shipped regex rejects day and month zero before `to_date` sees the value. Speed of one, the
+correctness of the other.
+
+## 15. `COPY` into all-text staging, then transform in SQL
+
+Not mainly for speed. 2,654 rows in `activity_log.csv` carry a semicolon inside a quoted field, and
+anything that splits on `;` shifts every later column on those rows without an error. `COPY … FORMAT
+csv` is a real CSV reader. Staging every column as text means no cast can fail during the load;
+the transforms apply parsers that return NULL and record an issue instead.
+
+## 16. `ClientCursor` for the multi-statement transform files — **measured**
+
+The first run failed with `cannot insert multiple commands into a prepared statement`: psycopg binds
+parameters over the extended query protocol, which carries one statement per execute. Rejected:
+splitting the files on semicolons (needs a parser that understands dollar-quoting), and substituting
+the run id into the text (safe — it is an integer from the database — but it reads as injection).
+`ClientCursor` binds client-side and sends a simple query, which allows many statements.
+
+## 17. Surrogate keys, a unique legacy code, and composite foreign keys
+
+User-created rows have no legacy code, and inventing `CO`/`AC` codes would pollute an identifier
+space the data README calls stable. One route parameter accepts either form.
+
+`FOREIGN KEY (opportunity_id, company_id) REFERENCES opportunity (id, company_id)` on activities and
+follow-ups makes "a conversation can never be attached to another company's opportunity" a property
+of the schema. The importer resolves mismatches itself before the constraint could reject a row and
+abort the transaction.
+
+## 18. One activity table; follow-ups in a table of their own
+
+The five activity types share every source column, and both busy timelines are ordered across all
+types, so one table with a type column keeps keyset paging index-ordered.
+
+A follow-up is separate because `completion_marker = 'Y'` on a call means *the call happened*, while
+a follow-up date on that row means *a promise is outstanding*. One column cannot hold both. The
+`origin` column records which of two defensible readings produced each row — tasks only (1,192) or
+any row with a date (5,718) — so the queue's default is a view choice, reversible in the UI.
+
+---
+
+# The policy
+
+## 19. Four readiness states, not two
+
+The director's rule and the coordinator's rule are both kept: a provisional handover satisfies the
+first, a ready one the second, and 728 opportunities fall between them. A conflict (height over the
+limit) is a different thing from missing information and is its own state, because the brief lists
+"missing information and conflicting requests" separately. An unknown edition limit gives neither
+ready nor blocked: the height was neither verified nor disproved.
+
+The comparison is `<=`. 1,210 opportunities request exactly their edition's limit.
+
+## 20. Readiness is a cached column with one writer, and no CHECK constraint
+
+It cannot be a generated column — the rule needs the edition's height limit, from another table —
+and a SQL view would put the rules in two languages. So `policy.assess()` runs in Python and the
+result is stored, by one module only, inside the import transaction, on every edit, and at startup
+when the stored policy version is stale. With no CHECK constraint, changing the policy needs no
+migration. Restarting against an already-imported database logged "stored readiness predates
+4state-v1; recomputing" and filled 15,000 rows in 536 ms.
+
+## 21. Time is a separate question from readiness
+
+7,823 opportunities have complete information for a fair that has already been held. Their
+information is not incomplete, so folding dates into `assess()` would muddle a clear rule. A second
+pure function, `is_actionable(ends_on, today)`, answers it, and the assistant's coordinator combines
+the two. `today` is a parameter, not a clock read, so both stay testable.
+
+---
+
+# The screens
+
+## 22. Trigram search with a three-character floor and a cap of 50
+
+People type fragments — `rivamare`, `chris.conti` — and a full-text index cannot match inside a
+word. Below three characters a trigram index cannot be used at all, so short terms get an indexed
+prefix match rather than a silent scan. Similarity ordering has ties and no unique tiebreak, so
+results cap at 50 instead of pretending to paginate.
+
+## 23. Edition scoping in three places
+
+The opportunity timeline query filters on the opportunity, never the company. The company page
+groups by edition and collapses finished ones into a labelled history block. The assistant's
+activity tool filters the same way. Other editions appear on an opportunity page only as links with
+a status — seeing that last year exists is useful, seeing its figure beside this year's is the
+complaint. 4,995 company-and-fair pairs in the archive span more than one edition.
+
+## 24. Every write works with and without JavaScript
+
+Each form is a real `method="post"` that htmx upgrades. With JavaScript the endpoint returns the
+changed fragment — an edit returns the facts block plus the header badge swapped out-of-band; without
+it, a 303 back to the page. Chosen by the `HX-Request` header in one handler, which also makes every
+action testable with plain HTTP.
+
+## 25. Ambiguous numbers are refused — **measured**
+
+The first form parser read `12.500` as twelve and a half. To an Italian reader it is twelve thousand
+five hundred, and the archive uses Italian conventions. Silently choosing is a factor-of-a-thousand
+error on a budget, so a single separator followed by exactly three digits is rejected with a message
+saying how to write it. `12.500,00` and `50,000.00` both still parse, because two different
+separators are unambiguous.
+
+## 26. Database sessions run in Europe/Rome
+
+The database container runs in UTC, so `current_date` would be yesterday for the half hour after
+midnight in Rome and a follow-up due today would read as due tomorrow. The team, the fairs and the
+archive's timestamps are all in Italy.
+
+## 27. A text filter on the follow-up queue — found by walking the brief's own example
+
+Logging "customer will confirm the floor area on Friday" with a Friday follow-up worked, but the
+follow-up landed at position 281 of 503 in "next 7 days". The archive dates from 1 September, so
+thousands of its follow-ups fall due together, and "find it again later" meant nothing. The filter is
+a separate form that does not carry the current tab, so a search from "Overdue" still finds a promise
+due on Friday.
+
+---
+
+# The assistant
+
+## 28. The three roles are the three voices in the dispute
+
+The preparer drafts its first pass from the sales director's rule alone; the checker rules with the
+policy for the technical side; the coordinator applies the reconciling policy. On any enquiry that is
+not fully ready the checker therefore finds something real to object to, and the revision loop runs
+rather than being dead code. The alternative — a preparer that always gets it right first time — would
+leave "continue or stop" with nothing to decide.
+
+The coordinator makes no model call. Choosing between revise and stop from a ruling that already
+exists needs no language model.
+
+## 29. Tools, not a pre-assembled bundle of facts
+
+The preparer starts with only an opportunity code, asks which tools to call, and the results decide
+the next round: an edition can be looked up only once named, a height checked only once the limit is
+known. That dependency chain is what makes it an agent, and the trace shows skipped tools with a
+reason. An unknown tool name is recorded as a failed call rather than crashing the run.
+
+"Is this height allowed" has one definition, `policy.height_within_limit`, used by both the policy
+and the `check_height_limit` tool.
+
+## 30. The model behind a protocol, created once and passed down
+
+`ModelClient` is a protocol; `create_model_client()` runs once at startup and the instance is passed
+explicitly into each run — never imported as a global — so tests substitute doubles and a real
+provider would be one new class. The stand-in is honest about what it is: output is a pure function
+of input, it quotes sales notes rather than inventing a summary of them, and every run is stored as a
+stub.
+
+A single `for` over two iterations bounds the loop. A test with a model that never agrees proves a
+decision still arrives.
+
+## 31. Runs are append-only and render from their own snapshot
+
+The run page reads only what the run stored — the facts, each step's input and output, each tool call.
+Re-querying the opportunity would let a later edit rewrite what an old run shows it worked from.
+
+## 32. Evaluation cases are chosen by query; baselines fingerprint behaviour, not text
+
+The reviewer replaces `data/`, so an eval pinned to `OP000003` tests an assumption about the archive.
+Each case describes a situation and takes the first matching row. The regression baseline records
+decisions, pass counts and the order of steps and tool calls, but no names or prose, so it survives a
+replaced archive while still catching a behavioural change. The gate was checked by corrupting a
+baseline and confirming the run exited 1.
+
+## 33. A budget-divergence rule was considered and not built — **measured**
+
+Flagging a customer budget far below the recorded value sounds like a useful "conflicting request".
+The archive has **0** such rows out of 14,635. Building a rule for an empty population would be
+complexity with no evidence behind it.
