@@ -1,0 +1,102 @@
+{% extends "base.html" %}
+{% block content %}
+
+<nav class="crumbs" aria-label="Breadcrumb">
+  <a href="/search">Search</a> <span aria-hidden="true">/</span> <span>{{ company.legacy_code }}</span>
+</nav>
+
+<header class="record-head">
+  <div>
+    <p class="eyebrow">Exhibitor</p>
+    <h1>{{ company.name }}</h1>
+    <p class="record-sub">
+      <code>{{ company.legacy_code }}</code>
+      {% if company.province_code %}<span>{{ company.province_code }}{% if company.region %}, {{ company.region }}{% endif %}</span>{% endif %}
+      {% if company.rep_name %}<span>Account manager: <strong>{{ company.rep_name }}</strong></span>{% endif %}
+    </p>
+  </div>
+  <dl class="stat-row">
+    <div><dt>Open</dt><dd>{{ summary.open_opportunities }}</dd></div>
+    <div><dt>Follow-ups</dt><dd>{{ summary.open_follow_ups }}{% if summary.overdue_follow_ups %} <span class="pill pill-danger">{{ summary.overdue_follow_ups }} overdue</span>{% endif %}</dd></div>
+    <div><dt>Contacts</dt><dd>{{ summary.contacts }}</dd></div>
+  </dl>
+</header>
+
+<div class="two-col">
+
+  <section class="col-main">
+    <h2 class="section-title">Opportunities by fair edition</h2>
+    <p class="muted section-note">
+      Each edition is its own conversation. An agreement for one edition does not carry over to
+      the next, so finished editions are kept separate and their figures are marked as agreed
+      for that edition only.
+    </p>
+
+    {% set current = editions|rejectattr('is_past')|list %}
+    {% set past = editions|selectattr('is_past')|list %}
+
+    {% if not editions %}
+      <p class="empty">No opportunities recorded for this exhibitor yet.</p>
+    {% endif %}
+
+    {% for ed in current %}
+      {% include "partials/_edition_group.html" %}
+    {% endfor %}
+
+    {% if past %}
+    <details class="history" {% if not current %}open{% endif %}>
+      <summary>
+        <span>Previous editions</span>
+        <span class="muted">{{ past|length }} edition{{ '' if past|length == 1 else 's' }} &middot; history, read only</span>
+      </summary>
+      {% for ed in past %}
+        {% include "partials/_edition_group.html" %}
+      {% endfor %}
+    </details>
+    {% endif %}
+  </section>
+
+  <aside class="col-side">
+    <section class="panel">
+      <h2>Contacts</h2>
+      <ul class="contact-list">
+        {% for p in contacts %}
+        <li id="contact-{{ p.id }}">
+          <span class="avatar" aria-hidden="true">{{ p.first_name|initials(p.last_name) }}</span>
+          <div class="contact-body">
+            <div class="contact-name">{{ p.first_name }} {{ p.last_name }}</div>
+            {% if p.email %}
+              <a href="mailto:{{ p.email }}">{{ p.email }}</a>
+            {% else %}
+              <span class="missing">No email on file</span>
+            {% endif %}
+            {% if p.phone %}
+              <a href="tel:{{ p.phone|replace(' ', '') }}">{{ p.phone }}</a>
+            {% else %}
+              <span class="missing">No phone on file</span>
+            {% endif %}
+            {% if p.fax %}<span class="muted">Fax {{ p.fax }}</span>{% endif %}
+            {% if p.opportunity_count %}<span class="muted">Primary on {{ p.opportunity_count }}</span>{% endif %}
+          </div>
+        </li>
+        {% endfor %}
+      </ul>
+    </section>
+
+    <section class="panel">
+      <h2>Company notes <span class="count">{{ summary.company_notes }}</span></h2>
+      <p class="muted section-note">About the exhibitor as a whole, not tied to any one edition.</p>
+      {% if notes.items %}
+        <ul class="timeline compact">
+          {% with page=notes, more_url="/companies/" ~ (company.legacy_code or company.id) ~ "/notes" %}
+            {% include "partials/_activity_rows.html" %}
+          {% endwith %}
+        </ul>
+      {% else %}
+        <p class="empty">No company-level notes.</p>
+      {% endif %}
+    </section>
+  </aside>
+
+</div>
+{% endblock %}

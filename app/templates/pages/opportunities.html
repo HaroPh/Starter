@@ -1,0 +1,73 @@
+{% extends "base.html" %}
+{% block content %}
+
+<h1>Opportunities</h1>
+
+{% set attention_total = counts.get('provisional', 0) + counts.get('incomplete', 0) + counts.get('blocked', 0) %}
+<p class="lede">
+  {{ counts.get('ready', 0) }} are ready for a technical handoff.
+  <strong>{{ attention_total }} are not</strong>, and those are shown first: they are where the work is.
+</p>
+
+<nav class="readiness-tabs" aria-label="Readiness">
+  <a href="/opportunities?view=attention" {% if filters.view == 'attention' and not filters.readiness %}aria-current="page"{% endif %}>
+    Needs attention <span class="count">{{ attention_total }}</span>
+  </a>
+  {% for key in ['provisional', 'incomplete', 'blocked', 'ready'] %}
+  <a href="/opportunities?readiness={{ key }}" {% if filters.readiness == key %}aria-current="page"{% endif %}>
+    <span class="dot {{ key|readiness_class }}"></span>{{ key|readiness_label }} <span class="count">{{ counts.get(key, 0) }}</span>
+  </a>
+  {% endfor %}
+  <a href="/opportunities?view=all" {% if filters.view == 'all' and not filters.readiness %}aria-current="page"{% endif %}>
+    All
+  </a>
+</nav>
+
+<form class="filters" method="get" action="/opportunities">
+  <input type="hidden" name="view" value="{{ filters.view }}">
+  {% if filters.readiness %}<input type="hidden" name="readiness" value="{{ filters.readiness }}">{% endif %}
+  <label for="f-edition">Fair edition
+    <select id="f-edition" name="edition" onchange="this.form.submit()">
+      <option value="">Any</option>
+      {% for e in options.editions %}
+      <option value="{{ e.legacy_code }}" {% if filters.edition == e.legacy_code %}selected{% endif %}>
+        {{ e.fair_name }} {{ e.edition_label }} ({{ e.opportunity_count }})
+      </option>
+      {% endfor %}
+    </select>
+  </label>
+  <label for="f-status">Status
+    <select id="f-status" name="status" onchange="this.form.submit()">
+      <option value="">Any</option>
+      {% for s in options.statuses %}
+      <option value="{{ s.code }}" {% if filters.status == s.code %}selected{% endif %}>{{ s.label }} ({{ s.n }})</option>
+      {% endfor %}
+    </select>
+  </label>
+  <noscript><button type="submit" class="btn">Apply</button></noscript>
+</form>
+
+<div class="table-scroll">
+  <table class="opp-table">
+    <thead>
+      <tr>
+        <th>Opportunity</th>
+        <th>Exhibitor</th>
+        <th>Edition</th>
+        <th class="num">Budget</th>
+        <th class="num">Area</th>
+        <th class="num">Height</th>
+        <th>Handoff</th>
+      </tr>
+    </thead>
+    <tbody id="opp-rows">
+      {% include "partials/_opportunity_rows.html" %}
+    </tbody>
+  </table>
+</div>
+
+{% if not page.items %}
+<p class="empty">No opportunities match these filters.</p>
+{% endif %}
+
+{% endblock %}

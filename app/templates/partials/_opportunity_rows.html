@@ -1,0 +1,32 @@
+{% for o in page.items %}
+<tr>
+  <td>
+    <a href="/opportunities/{{ o.legacy_code or o.id }}"><code>{{ o.legacy_code or o.id }}</code></a>
+    <div class="cell-sub">{{ o.description }}</div>
+  </td>
+  <td>
+    <a href="/companies/{{ o.company_code }}">{{ o.company_name }}</a>
+    <div class="cell-sub">{{ o.province_code }}{% if o.rep_name %} &middot; {{ o.rep_name }}{% endif %}</div>
+  </td>
+  <td>{% if o.edition_code %}{{ o.fair_name }} {{ o.edition_label }}{% else %}<span class="missing">none</span>{% endif %}</td>
+  <td class="num">{{ o.client_budget_eur|eur }}</td>
+  <td class="num">{{ o.stand_area_sqm|sqm }}</td>
+  <td class="num">
+    {{ o.requested_height_m|metres }}
+    {% if o.requested_height_m is not none and o.max_stand_height_m is not none and o.requested_height_m > o.max_stand_height_m %}
+      <div class="cell-sub over">limit {{ o.max_stand_height_m|metres }}</div>
+    {% endif %}
+  </td>
+  <td><span class="pill {{ o.readiness|readiness_class }}">{{ o.readiness|readiness_label }}</span></td>
+</tr>
+{% endfor %}
+{% if page.has_more %}
+<tr class="row-more"
+    hx-get="/opportunities?view={{ filters.view }}&amp;edition={{ filters.edition }}&amp;status={{ filters.status }}&amp;readiness={{ filters.readiness }}&amp;cursor={{ page.next_cursor }}"
+    hx-trigger="revealed"
+    hx-swap="outerHTML">
+  <td colspan="7">
+    <a href="/opportunities?view={{ filters.view }}&amp;edition={{ filters.edition }}&amp;status={{ filters.status }}&amp;readiness={{ filters.readiness }}&amp;cursor={{ page.next_cursor }}">Load more</a>
+  </td>
+</tr>
+{% endif %}

@@ -1,0 +1,29 @@
+{% extends "base.html" %}
+{% block content %}
+
+<h1>Find an exhibitor or contact</h1>
+
+<form class="bigsearch" action="/search" method="get" role="search">
+  <input id="search-q" type="search" name="q" value="{{ q }}" autofocus
+         placeholder="Company name, contact name, email, or a code such as CO000002"
+         aria-label="Search"
+         autocomplete="off" spellcheck="false"
+         hx-get="/search/results"
+         hx-trigger="input changed delay:250ms, search"
+         hx-target="#results"
+         hx-push-url="false"
+         hx-indicator="#search-spin">
+  <button type="submit" class="btn btn-primary">Search</button>
+  <span id="search-spin" class="htmx-indicator muted">searching&hellip;</span>
+</form>
+
+<p class="muted hint">
+  Matches anywhere in a name, ignoring case and accents &mdash; <code>societa</code> finds
+  <em>Societ&agrave;</em>. A code jumps straight to its record.
+</p>
+
+<div id="results" aria-live="polite">
+  {% include "partials/_search_results.html" %}
+</div>
+
+{% endblock %}

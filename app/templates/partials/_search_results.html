@@ -1,0 +1,71 @@
+{% if outcome %}
+  {% if outcome.note %}<p class="notice">{{ outcome.note }}</p>{% endif %}
+
+  {% if outcome.total == 0 %}
+    <p class="empty">Nothing matches <strong>{{ outcome.term }}</strong>.
+      Try part of the name, or a contact&rsquo;s surname.</p>
+  {% endif %}
+
+  {% if outcome.companies %}
+  <section class="result-group">
+    <h2>Exhibitors <span class="count">{{ outcome.companies|length }}{% if outcome.capped %}+{% endif %}</span></h2>
+    {# Name alone is not enough: CO000002 and CO000003 are both "Rivamare Packaging S.r.l.".
+       Code, province and owning rep are what tell them apart, so every row carries all three. #}
+    <ul class="result-list">
+      {% for c in outcome.companies %}
+      <li>
+        <a class="result" href="/companies/{{ c.legacy_code or c.id }}">
+          <span class="result-main">{{ c.name }}</span>
+          <span class="result-meta">
+            <code>{{ c.legacy_code }}</code>
+            {% if c.province_code %}<span>{{ c.province_code }}{% if c.region %}, {{ c.region }}{% endif %}</span>{% endif %}
+            {% if c.rep_name %}<span>{{ c.rep_name }}</span>{% endif %}
+            <span>{{ c.opportunity_count }} opportunit{{ 'y' if c.opportunity_count == 1 else 'ies' }}</span>
+          </span>
+        </a>
+      </li>
+      {% endfor %}
+    </ul>
+  </section>
+  {% endif %}
+
+  {% if outcome.contacts %}
+  <section class="result-group">
+    <h2>Contacts <span class="count">{{ outcome.contacts|length }}{% if outcome.capped %}+{% endif %}</span></h2>
+    <ul class="result-list">
+      {% for p in outcome.contacts %}
+      <li>
+        <a class="result" href="/contacts/{{ p.legacy_code or p.id }}">
+          <span class="result-main">{{ p.first_name }} {{ p.last_name }}</span>
+          <span class="result-meta">
+            <span>{{ p.company_name }}</span>
+            <code>{{ p.company_code }}</code>
+            {% if p.email %}<span>{{ p.email }}</span>{% else %}<span class="missing">no email on file</span>{% endif %}
+          </span>
+        </a>
+      </li>
+      {% endfor %}
+    </ul>
+  </section>
+  {% endif %}
+
+  {% if outcome.opportunities %}
+  <section class="result-group">
+    <h2>Opportunities <span class="count">{{ outcome.opportunities|length }}</span></h2>
+    <ul class="result-list">
+      {% for o in outcome.opportunities %}
+      <li>
+        <a class="result" href="/opportunities/{{ o.legacy_code or o.id }}">
+          <span class="result-main">{{ o.description }}</span>
+          <span class="result-meta">
+            <code>{{ o.legacy_code }}</code>
+            <span>{{ o.company_name }}</span>
+            {% if o.edition_code %}<span>{{ o.edition_code }}</span>{% endif %}
+          </span>
+        </a>
+      </li>
+      {% endfor %}
+    </ul>
+  </section>
+  {% endif %}
+{% endif %}

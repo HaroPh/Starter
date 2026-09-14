@@ -1,0 +1,50 @@
+{# One fair edition and the exhibitor's opportunities in it. `ed` comes from the caller. #}
+<article class="edition{% if ed.is_past %} is-past{% endif %}">
+  <header class="edition-head">
+    <div>
+      <h3>
+        {% if ed.fair_name %}{{ ed.fair_name }}{% if ed.edition_label %} {{ ed.edition_label }}{% endif %}
+        {% else %}No fair edition recorded{% endif %}
+      </h3>
+      <p class="muted">
+        {% if ed.edition_code %}<code>{{ ed.edition_code }}</code>{% endif %}
+        {% if ed.city %}{{ ed.city }}{% if ed.venue %} &middot; {{ ed.venue }}{% endif %}{% endif %}
+        {% if ed.starts_on %} &middot; {{ ed.starts_on|dmy }}&ndash;{{ ed.ends_on|dmy }}{% endif %}
+      </p>
+    </div>
+    <div class="edition-limit" title="Maximum stand height for this edition. No exceptions are recorded.">
+      <span class="muted">Height limit</span>
+      <strong>{{ ed.max_stand_height_m|metres }}</strong>
+    </div>
+  </header>
+
+  {% if ed.is_past %}
+    <p class="past-note">This edition has finished. The figures below were agreed for it and do not apply to any later edition.</p>
+  {% endif %}
+
+  <ul class="opp-list">
+    {% for o in ed.opportunities %}
+    <li>
+      <a class="opp" href="/opportunities/{{ o.legacy_code or o.id }}">
+        <span class="opp-top">
+          <code>{{ o.legacy_code }}</code>
+          <span class="pill {{ o.status|status_class }}"
+                {% if o.legacy_status_raw and o.legacy_status_raw != o.status %}title="Imported as &quot;{{ o.legacy_status_raw }}&quot;"{% endif %}>
+            {{ (o.status or 'unknown')|capitalize }}
+          </span>
+          {% if not ed.is_past %}
+          <span class="pill {{ o.readiness|readiness_class }}">{{ o.readiness|readiness_label }}</span>
+          {% endif %}
+        </span>
+        <span class="opp-desc">{{ o.description }}</span>
+        <span class="opp-figures">
+          <span><em>{{ 'Agreed value' if ed.is_past else 'Recorded value' }}</em> {{ o.amount_eur|eur }}</span>
+          <span><em>Client budget</em> {{ o.client_budget_eur|eur }}</span>
+          <span><em>Area</em> {{ o.stand_area_sqm|sqm }}</span>
+          <span><em>Requested height</em> {{ o.requested_height_m|metres }}</span>
+        </span>
+      </a>
+    </li>
+    {% endfor %}
+  </ul>
+</article>

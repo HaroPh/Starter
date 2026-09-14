@@ -23,14 +23,16 @@ from collections.abc import AsyncIterator
 from contextlib import asynccontextmanager
 from pathlib import Path
 
-from fastapi import FastAPI
+from fastapi import FastAPI, Request
+from fastapi.responses import JSONResponse
 from fastapi.staticfiles import StaticFiles
-from fastapi.templating import Jinja2Templates
+from starlette.exceptions import HTTPException as StarletteHTTPException
 
 from app.config import Settings, get_settings
 from app.db import migrate, pool
 from app.importer import runner as import_runner
-from app.routes import health, home
+from app.routes import companies, health, home, opportunities, search
+from app.templating import build_templates
 
 logging.basicConfig(
     level=logging.INFO,
@@ -102,14 +104,32 @@ def create_app(settings: Settings | None = None) -> FastAPI:
     )
     app.state.settings = settings
 
-    templates = Jinja2Templates(directory=str(BASE_DIR / "templates"))
-    templates.env.globals["asset_version"] = settings.app_version
+    templates = build_templates(str(BASE_DIR / "templates"), settings.app_version)
     app.state.templates = templates
 
     app.mount("/static", StaticFiles(directory=str(BASE_DIR / "static")), name="static")
 
     app.include_router(health.router)
     app.include_router(home.router)
+    app.include_router(search.router)
+    app.include_router(companies.router)
+    app.include_router(opportunities.router)
+
+    @app.exception_handler(StarletteHTTPException)
+    async def http_error_page(request: Request, exc: StarletteHTTPException):
+        """Render errors as pages for people and as JSON for the API.
+
+        A reviewer who mistypes a code should get a page explaining what was not found and
+        how to search for it, not a bare `{"detail": "Not Found"}`.
+        """
+        if request.url.path.startswith("/api/") or request.url.path in ("/healthz", "/readyz"):
+            return JSONResponse({"detail": exc.detail}, status_code=exc.status_code)
+        return templates.TemplateResponse(
+            request,
+            "pages/error.html",
+            {"title": f"{exc.status_code}", "status": exc.status_code, "detail": exc.detail},
+            status_code=exc.status_code,
+        )
 
     return app
 

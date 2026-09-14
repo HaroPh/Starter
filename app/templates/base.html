@@ -6,6 +6,7 @@
   <title>{% block title %}{{ title|default("Exhibition sales CRM") }}{% endblock %} &middot; Exhibition CRM</title>
   <link rel="icon" href="/static/favicon.svg" type="image/svg+xml">
   <link rel="stylesheet" href="/static/css/app.css?v={{ asset_version }}">
+  <link rel="stylesheet" href="/static/css/screens.css?v={{ asset_version }}">
   {# Vendored, not a CDN: the application must work with no internet at runtime. #}
   <script src="/static/vendor/htmx-2.0.10.min.js?v={{ asset_version }}" defer></script>
 </head>

@@ -1,0 +1,175 @@
+{% extends "base.html" %}
+{% block content %}
+
+<nav class="crumbs" aria-label="Breadcrumb">
+  <a href="/companies/{{ opp.company_code or opp.company_id }}">{{ opp.company_name }}</a>
+  <span aria-hidden="true">/</span>
+  <span>{{ opp.legacy_code or opp.id }}</span>
+</nav>
+
+{% if opp.edition_is_past %}
+<p class="banner banner-past" role="note">
+  <strong>This edition has finished</strong> ({{ opp.fair_name }} {{ opp.edition_label }} ended {{ opp.ends_on|dmy }}).
+  What was agreed here applies to that edition only.
+</p>
+{% endif %}
+
+<header class="record-head">
+  <div>
+    <p class="eyebrow">Opportunity &middot; <code>{{ opp.legacy_code or opp.id }}</code></p>
+    <h1>{{ opp.description or 'Untitled opportunity' }}</h1>
+    <p class="record-sub">
+      <a href="/companies/{{ opp.company_code or opp.company_id }}">{{ opp.company_name }}</a>
+      {% if opp.province_code %}<span>{{ opp.province_code }}</span>{% endif %}
+      {% if opp.rep_name %}<span>{{ opp.rep_name }}</span>{% endif %}
+    </p>
+  </div>
+  <div class="head-badges">
+    <span class="pill {{ opp.status|status_class }}"
+          {% if opp.legacy_status_raw %}title="Imported as &quot;{{ opp.legacy_status_raw }}&quot;"{% endif %}>
+      {{ opp.status_label or ('Unknown (imported as "' ~ opp.legacy_status_raw ~ '")' if opp.legacy_status_raw else 'No status') }}
+    </span>
+    <span id="readiness-badge" class="pill pill-lg {{ opp.readiness|readiness_class }}">
+      Handoff: {{ opp.readiness|readiness_label }}
+    </span>
+  </div>
+</header>
+
+<div class="two-col">
+  <section class="col-main">
+
+    <section class="panel" id="facts">
+      <h2>The enquiry</h2>
+      <dl class="facts">
+        <div>
+          <dt>Recorded value</dt>
+          <dd>{{ opp.amount_eur|eur }}</dd>
+          <dd class="fact-note">Sales team figure, excl. VAT &mdash; not a price or a budget</dd>
+        </div>
+        <div>
+          <dt>Client budget</dt>
+          <dd>{{ opp.client_budget_eur|eur }}</dd>
+          <dd class="fact-note">{% if opp.client_budget_eur is none %}Not stated yet{% else %}What the customer said, excl. VAT{% endif %}</dd>
+        </div>
+        <div>
+          <dt>Stand area</dt>
+          <dd>{{ opp.stand_area_sqm|sqm }}</dd>
+          <dd class="fact-note">{% if opp.stand_area_sqm is none %}Plot not confirmed{% else %}Allocated plot{% endif %}</dd>
+        </div>
+        <div>
+          <dt>Requested height</dt>
+          <dd>
+            {{ opp.requested_height_m|metres }}
+            {% if opp.requested_height_m is not none and opp.max_stand_height_m is not none %}
+              {% if opp.requested_height_m > opp.max_stand_height_m %}
+                <span class="pill pill-danger">over the {{ opp.max_stand_height_m|metres }} limit</span>
+              {% elif opp.requested_height_m == opp.max_stand_height_m %}
+                <span class="pill">at the limit</span>
+              {% endif %}
+            {% endif %}
+          </dd>
+          <dd class="fact-note">A request, not an approval</dd>
+        </div>
+        <div>
+          <dt>Opened</dt>
+          <dd>{{ opp.opened_on|dmy }}</dd>
+        </div>
+        <div>
+          <dt>Decision expected</dt>
+          <dd>{{ opp.expected_close_on|dmy }}</dd>
+        </div>
+      </dl>
+
+      {% if opp.brief_notes %}
+      <div class="brief">
+        <h3>Brief notes</h3>
+        <p>{{ opp.brief_notes }}</p>
+      </div>
+      {% endif %}
+    </section>
+
+    <section class="panel">
+      <h2>Conversations <span class="muted small">this opportunity only</span></h2>
+      {% if timeline.items %}
+        <ul class="timeline" id="timeline">
+          {% with page=timeline, more_url="/opportunities/" ~ (opp.legacy_code or opp.id) ~ "/timeline" %}
+            {% include "partials/_activity_rows.html" %}
+          {% endwith %}
+        </ul>
+      {% else %}
+        <p class="empty">Nothing recorded against this opportunity yet.</p>
+      {% endif %}
+    </section>
+
+  </section>
+
+  <aside class="col-side">
+
+    <section class="panel">
+      <h2>Fair edition</h2>
+      {% if opp.edition_code %}
+        <p class="edition-name">{{ opp.fair_name }} {{ opp.edition_label }}</p>
+        <dl class="kv">
+          <dt>Code</dt><dd><code>{{ opp.edition_code }}</code></dd>
+          <dt>Where</dt><dd>{{ opp.city }}{% if opp.venue %}, {{ opp.venue }}{% endif %}</dd>
+          <dt>Dates</dt><dd>{{ opp.starts_on|dmy }} &ndash; {{ opp.ends_on|dmy }}</dd>
+          <dt>Height limit</dt><dd><strong>{{ opp.max_stand_height_m|metres }}</strong></dd>
+        </dl>
+      {% else %}
+        <p class="empty">No fair edition recorded, so the height request cannot be checked.</p>
+      {% endif %}
+    </section>
+
+    <section class="panel">
+      <h2>Contact</h2>
+      {% if opp.contact_code %}
+        <p class="contact-name">{{ opp.contact_first_name }} {{ opp.contact_last_name }}</p>
+        {% if opp.contact_email %}<p><a href="mailto:{{ opp.contact_email }}">{{ opp.contact_email }}</a></p>
+        {% else %}<p class="missing">No email on file</p>{% endif %}
+        {% if opp.contact_phone %}<p><a href="tel:{{ opp.contact_phone|replace(' ', '') }}">{{ opp.contact_phone }}</a></p>
+        {% else %}<p class="missing">No phone on file</p>{% endif %}
+      {% else %}
+        <p class="empty">No primary contact recorded.
+          <a href="/companies/{{ opp.company_code or opp.company_id }}">See the exhibitor&rsquo;s contacts</a>.</p>
+      {% endif %}
+    </section>
+
+    <section class="panel">
+      <h2>Open follow-ups <span class="count">{{ follow_ups|length }}</span></h2>
+      {% if follow_ups %}
+        <ul class="fu-list">
+          {% for f in follow_ups %}
+          <li class="{% if f.is_overdue %}is-overdue{% endif %}">
+            <span class="fu-date">{{ f.due_on|day_label }}</span>
+            {% if f.is_overdue %}<span class="pill pill-danger">overdue</span>{% endif %}
+            <span class="fu-note">{{ f.note }}</span>
+          </li>
+          {% endfor %}
+        </ul>
+      {% else %}
+        <p class="empty">Nothing waiting on this opportunity.</p>
+      {% endif %}
+    </section>
+
+    {% if siblings %}
+    <section class="panel">
+      <h2>Other editions, same fair</h2>
+      {# Deliberately links only. Showing that prior editions exist is useful; putting their
+         amounts next to this one is exactly how last year gets mistaken for this year. #}
+      <p class="muted section-note">Separate agreements. Open them to see their figures.</p>
+      <ul class="sib-list">
+        {% for s in siblings %}
+        <li>
+          <a href="/opportunities/{{ s.legacy_code or s.id }}">{{ s.edition_label or s.edition_code }}</a>
+          <code>{{ s.legacy_code }}</code>
+          <span class="pill {{ s.status|status_class }}">{{ (s.status or 'unknown')|capitalize }}</span>
+          {% if s.is_past %}<span class="muted">finished</span>{% endif %}
+        </li>
+        {% endfor %}
+      </ul>
+    </section>
+    {% endif %}
+
+  </aside>
+</div>
+{% endblock %}

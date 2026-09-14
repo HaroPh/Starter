@@ -1,0 +1,20 @@
+{% extends "base.html" %}
+{% block content %}
+<section class="error-page">
+  <p class="eyebrow">{{ status }}</p>
+  {% if status == 404 %}
+    <h1>Not found</h1>
+    <p class="lede">{{ detail }}</p>
+    <p>Codes look like <code>CO000002</code> for an exhibitor or <code>OP000003</code> for an
+      opportunity. If you have a name instead, search for it.</p>
+    <form class="bigsearch" action="/search" method="get" role="search">
+      <input id="error-q" type="search" name="q" placeholder="Search by name, email or code" aria-label="Search">
+      <button type="submit" class="btn btn-primary">Search</button>
+    </form>
+  {% else %}
+    <h1>Something went wrong</h1>
+    <p class="lede">{{ detail }}</p>
+    <p><a href="/">Back to the overview</a></p>
+  {% endif %}
+</section>
+{% endblock %}

@@ -1,0 +1,29 @@
+{# Timeline rows plus, when there is more, a sentinel that loads the next page as it scrolls
+   into view. The request carries the cursor of the last row shown -- keyset paging, so the
+   database walks straight to the position instead of skipping rows with OFFSET. #}
+{% for a in page.items %}
+<li class="tl-item tl-{{ a.activity_type }}">
+  <span class="tl-type{% if not a.type_known %} tl-unknown{% endif %}">{{ a.type_label or a.activity_type }}</span>
+  <div class="tl-body">
+    <div class="tl-meta">
+      <time datetime="{{ a.occurred_at.isoformat() }}">{{ a.occurred_at|dmyhm }}</time>
+      {% if a.author_name %}<span>{{ a.author_name }}</span>{% endif %}
+      {% if a.activity_type == 'task' and a.legacy_completion_marker == 'N' %}<span class="pill pill-wait">to do</span>{% endif %}
+      {% if a.follow_up_due_on %}
+        <span class="pill {% if a.follow_up_status == 'pending' %}pill-info{% endif %}">
+          follow up {{ a.follow_up_due_on|dmy }}{% if a.follow_up_status != 'pending' %} &middot; {{ a.follow_up_status }}{% endif %}
+        </span>
+      {% endif %}
+    </div>
+    <p class="tl-details">{{ a.details }}</p>
+  </div>
+</li>
+{% endfor %}
+{% if page.has_more %}
+<li class="tl-more"
+    hx-get="{{ more_url }}?cursor={{ page.next_cursor }}"
+    hx-trigger="revealed"
+    hx-swap="outerHTML">
+  <a href="{{ more_url }}?cursor={{ page.next_cursor }}">Load earlier entries</a>
+</li>
+{% endif %}
